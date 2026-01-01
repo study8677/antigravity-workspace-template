@@ -8,10 +8,16 @@ import importlib.util
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
+# Ensure project root is on sys.path when running this file directly
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 from google import genai
 
 from src.config import settings
 from src.memory import MemoryManager
+from src.tools.openai_proxy import call_openai_chat
 
 
 class GeminiAgent:
@@ -31,6 +37,7 @@ class GeminiAgent:
         self.settings = settings
         self.memory = MemoryManager()
         self.mcp_manager = None  # Will be initialized if MCP is enabled
+        self.use_openai_backend = False  # Use OpenAI-compatible backend when configured
 
         # Dynamically load all tools from src/tools/ directory
         self.available_tools: Dict[str, Callable[..., Any]] = self._load_tools()
@@ -72,7 +79,21 @@ class GeminiAgent:
             self.client = _DummyClient()
         else:
             try:
-                self.client = genai.Client(api_key=self.settings.GOOGLE_API_KEY)
+                # If a Google API key is provided, prefer Gemini.
+                if self.settings.GOOGLE_API_KEY:
+                    self.client = genai.Client(api_key=self.settings.GOOGLE_API_KEY)
+                else:
+                    # If no Google key but an OpenAI-compatible endpoint is set,
+                    # route generations through the OpenAI proxy (e.g., local Ollama).
+                    if self.settings.OPENAI_BASE_URL:
+                        self.use_openai_backend = True
+                        print(
+                            f"🔄 Using OpenAI-compatible backend at {self.settings.OPENAI_BASE_URL} "
+                            f"with model {self.settings.OPENAI_MODEL}"
+                        )
+                        self.client = None  # Not used when proxying to OpenAI
+                    else:
+                        raise ValueError("No GOOGLE_API_KEY or OPENAI_BASE_URL configured")
             except Exception as e:
                 print(f"⚠️ genai client not initialized: {e}")
 
@@ -233,6 +254,15 @@ class GeminiAgent:
 
     def _call_gemini(self, prompt: str) -> str:
         """Lightweight wrapper around the Gemini content generation call."""
+        if self.use_openai_backend:
+            try:
+                return call_openai_chat(
+                    prompt=prompt,
+                    model=self.settings.OPENAI_MODEL,
+                )
+            except Exception as exc:
+                return f"[openai-backend-error] {exc}"
+
         response_obj = self.client.models.generate_content(
             model=self.settings.GEMINI_MODEL_NAME,
             contents=prompt,
@@ -468,8 +498,13 @@ class GeminiAgent:
 
 
 if __name__ == "__main__":
+    # Allow overriding the task via CLI args or AGENT_TASK env var
+    task = " ".join(sys.argv[1:]).strip() or os.environ.get(
+        "AGENT_TASK", "帮助我查看今天的天气"
+    )
+
     agent = GeminiAgent()
     try:
-        agent.run("Analyze the stock performance of GOOGL")
+        agent.run(task)
     finally:
         agent.shutdown()
