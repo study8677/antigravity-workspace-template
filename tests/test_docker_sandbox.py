@@ -1,4 +1,3 @@
-import os
 import pytest
 
 from src.sandbox.factory import get_sandbox
