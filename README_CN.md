@@ -118,6 +118,8 @@ python src/agent.py
 | 特性 | 描述 |
 |---------|-------------|
 | 🧠 **无限记忆** | 递归摘要自动压缩上下文 |
+| 🧠 **真实思考 (True Thinking)** | 行动前使用思维链 (CoT) 进行“深度思考”，生成执行计划 |
+| 🎓 **技能系统 (Skills System)** | 模块化能力系统：`src/skills/` 下的文件夹自动加载 |
 | 🛠️ **通用工具** | 将 Python 函数放入 `src/tools/` 即可自动发现 |
 | 📚 **自动上下文** | 向 `.context/` 添加文件即可自动注入提示 |
 | 🔌 **MCP 支持** | 连接 GitHub、数据库、文件系统、自定义服务器 |
@@ -146,7 +148,8 @@ src/
 ├── mcp_client.py      # MCP 集成
 ├── swarm.py           # 多 Agent 编排
 ├── agents/            # 专家型 Agent
-└── tools/             # 自定义工具
+├── tools/             # 自定义工具
+└── skills/            # 模块化技能（零配置）
 
 .context/             # 知识库（自动注入）
 .antigravity/         # Antigravity 规则
@@ -210,10 +213,11 @@ Swarm 会自动：
 
 ## 🆕 最近更新
 
+- 新增 **真实思考 (True Thinking)**：Agent 现在会在每次行动前执行真正的“深度思考”（CoT），生成结构化计划。
+- 新增 **技能系统 (Skills System)**：新的 `src/skills/` 目录支持基于文件夹的模块化能力（文档+代码）。
 - 支持本地 OpenAI 兼容后端（如 Ollama），在没有 Google Key 时可直接用本地模型。
 - 修复 `.env` 读取路径，从 `src/` 运行也能读取项目根目录配置。
-- 默认 `.env` 改为本地后端占位，不再硬编码 Google Key。
-- 入口脚本（`agent.py`、`src/agent.py`）支持通过参数或 `AGENT_TASK` 指定任务，不再固定示例任务。
+- 入口脚本支持通过参数或 `AGENT_TASK` 指定任务。
 
 ## 🤝 贡献
 

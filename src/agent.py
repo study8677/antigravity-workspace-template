@@ -45,6 +45,14 @@ class GeminiAgent:
         # Initialize MCP integration if enabled
         if self.settings.MCP_ENABLED:
             self._initialize_mcp()
+        
+        # Load Skills
+        self.skill_docs = ""
+        try:
+            from src.skills.loader import load_skills
+            self.skill_docs = load_skills(self.available_tools)
+        except ImportError:
+            print("⚠️ Skills loader not found, skipping skills.")
 
         print(
             f"🤖 Initializing {self.settings.AGENT_NAME} with model {self.settings.GEMINI_MODEL_NAME}..."
@@ -226,6 +234,10 @@ class GeminiAgent:
                 context_parts.append(f"\n--- {context_file.name} ---\n{content}")
             except Exception as e:
                 print(f"   ⚠️ Failed to load context from {context_file.name}: {e}")
+        
+        # Inject Skill Docs if present
+        if self.skill_docs:
+             context_parts.append(f"\n--- SKILLS DOCUMENTATION ---\n{self.skill_docs}")
 
         if context_parts:
             print(f"   📚 Loaded context from {len(context_parts)} file(s)")
@@ -344,34 +356,35 @@ class GeminiAgent:
         # Use the centralized wrapper that safely handles missing/None responses
         return self._call_gemini(prompt)
 
+    def _generate_thought(self, task: str) -> str:
+        """
+        Generates a Chain-of-Thought plan using the specific Deep Think prompt.
+        """
+        context_knowledge = self._load_context()
+        
+        # This prompt is derived from .antigravity/rules.md
+        thinking_prompt = (
+            f"{context_knowledge}\n\n"
+            "You are a Google Antigravity Expert in Deep Think mode.\n"
+            "Your Goal: Analyze the user task and formulate a precise execution plan.\n"
+            "BEHAVIOR:\n"
+            "1. Mission-First: Align with mission.md.\n"
+            "2. Deep Think: Reason through edge cases, security, and scalability.\n"
+            "3. Plan Alignment: Output a clear plan.\n\n"
+            f"Task: {task}\n\n"
+            "Output your thought process in a <thought> block, followed by a <plan> block."
+        )
+        
+        print(f"\n🤔 <thought> Deep Thinking about: '{task}'...")
+        thought_response = self._call_gemini(thinking_prompt)
+        print(f"{thought_response}\n</thought>\n")
+        return thought_response
+
     def think(self, task: str) -> str:
         """
         Simulates the 'Deep Think' process of Gemini 3.
         """
-        # Load context knowledge from .context/ directory
-        context_knowledge = self._load_context()
-
-        # Inject context into system prompt
-        system_prompt = (
-            f"{context_knowledge}\n\n"
-            "You are a focused agent following the Artifact-First protocol. Stay concise and tactical."
-        )
-
-        context_window = self.memory.get_context_window(
-            system_prompt=system_prompt,
-            max_messages=10,
-            summarizer=self.summarize_memory,
-        )
-
-        print(f"\n🤔 <thought> Analyzing task: '{task}'")
-        print(f"   - Loaded context messages: {len(context_window)}")
-        print("   - Checking mission context...")
-        print("   - Identifying necessary tools...")
-        print("   - Formulating execution plan...")
-        print("</thought>\n")
-
-        time.sleep(1)
-        return "Plan formulated."
+        return self._generate_thought(task)
 
     def act(self, task: str) -> str:
         """
@@ -380,8 +393,9 @@ class GeminiAgent:
         # 1) Record user input
         self.memory.add_entry("user", task)
 
-        # 2) Think
-        self.think(task)
+        # 2) Think (integrated CoT)
+        thought_process = self.think(task)
+        self.memory.add_entry("assistant", f"Thinking Process:\n{thought_process}")
 
         # 3) Tool dispatch entry point
         print(f"[TOOLS] Executing tools for: {task}")
@@ -391,6 +405,7 @@ class GeminiAgent:
             "You are an expert AI agent following the Think-Act-Reflect loop.\n"
             "You have access to the following tools:\n"
             f"{tool_list}\n\n"
+            f"Relevant Context/Plan:\n{thought_process}\n\n"
             "If you need a tool, respond ONLY with a JSON object using the schema:\n"
             '{"action": "<tool_name>", "args": {"param": "value"}}\n'
             "If no tool is needed, reply directly with the final answer."

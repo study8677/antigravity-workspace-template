@@ -118,6 +118,8 @@ This is **not** another LangChain wrapper. It's a minimal, transparent workspace
 | Feature | Description |
 |---------|-------------|
 | 🧠 **Infinite Memory** | Recursive summarization compresses context automatically |
+| 🧠 **True Thinking** | "Deep Think" step using Chain-of-Thought prompts before acting |
+| 🎓 **Skills System** | Modular capabilities as folders (`src/skills/`) with auto-loading |
 | 🛠️ **Universal Tools** | Drop Python functions in `src/tools/` → auto-discovered |
 | 📚 **Auto Context** | Add files to `.context/` → auto-injected into prompts |
 | 🔌 **MCP Support** | Connect GitHub, databases, filesystems, custom servers |
@@ -175,7 +177,8 @@ src/
 ├── mcp_client.py      # MCP integration
 ├── swarm.py           # Multi-agent orchestration
 ├── agents/            # Specialist agents
-└── tools/             # Your custom tools
+├── tools/             # Your custom tools
+└── skills/            # Modular skills (Zero-Config)
 
 .context/             # Knowledge base (auto-injected)
 .antigravity/         # Antigravity rules
@@ -237,10 +240,11 @@ The swarm automatically:
 
 ## 🆕 Recent Updates
 
+- Added **True Thinking**: The agent now performs a real "Deep Think" step (Chain-of-Thought) before every action, generating a structured plan.
+- Added **Skills System**: New `src/skills/` directory allows for modular, folder-based agent capabilities (Docs + Code).
 - Added local OpenAI-compatible backend support (e.g., Ollama) when no Google API key is provided.
 - Fixed `.env` loading so runs from the `src/` folder still read the project-root config.
-- Default `.env` now points to local backend placeholders instead of a hardcoded Google key.
-- CLI entrypoints (`agent.py` and `src/agent.py`) now accept tasks via arguments or `AGENT_TASK`, instead of a fixed demo task.
+- CLI entrypoints (`agent.py` and `src/agent.py`) now accept tasks via arguments `AGENT_TASK`.
 
 See [Roadmap](docs/en/ROADMAP.md) for details.
 

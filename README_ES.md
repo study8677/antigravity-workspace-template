@@ -118,6 +118,8 @@ Esto **no** es otro wrapper de LangChain. Es un workspace mínimo y transparente
 | Característica | Descripción |
 |---------|-------------|
 | 🧠 **Memoria infinita** | La resumización recursiva comprime el contexto automáticamente |
+| 🧠 **Pensamiento Real** | Paso de "Deep Think" (Chain-of-Thought) antes de actuar |
+| 🎓 **Sistema de Habilidades** | Capacidades modulares como carpetas (`src/skills/`) con carga automática |
 | 🛠️ **Herramientas universales** | Coloca funciones Python en `src/tools/` → se descubren solas |
 | 📚 **Contexto automático** | Agrega archivos a `.context/` → se inyectan en los prompts |
 | 🔌 **Soporte MCP** | Conecta GitHub, bases de datos, sistemas de archivos, servidores personalizados |
@@ -146,7 +148,8 @@ src/
 ├── mcp_client.py      # Integración de MCP
 ├── swarm.py           # Orquestación multiagente
 ├── agents/            # Agentes especialistas
-└── tools/             # Tus herramientas personalizadas
+├── tools/             # Tus herramientas personalizadas
+└── skills/            # Habilidades modulares (Zero-Config)
 
 .context/             # Base de conocimiento (auto-inyectada)
 .antigravity/         # Reglas de Antigravity
@@ -208,10 +211,11 @@ El swarm automáticamente:
 
 ## 🆕 Actualizaciones recientes
 
+- Añadido **Pensamiento Real (True Thinking)**: El agente realiza un paso real de "Deep Think" (CoT) antes de cada acción, generando un plan estructurado.
+- Añadido **Sistema de Habilidades (Skills System)**: Nuevo directorio `src/skills/` permite capacidades modulares basadas en carpetas (Docs + Código).
 - Soporte para backend local compatible con OpenAI (p.ej., Ollama) cuando no hay clave de Google.
 - Corrección de carga de `.env`: ejecutar desde `src/` sigue leyendo la configuración en la raíz del proyecto.
-- `.env` por defecto apunta a un backend local de ejemplo, sin clave de Google incrustada.
-- Los entrypoints (`agent.py` y `src/agent.py`) ahora aceptan tareas por argumentos o `AGENT_TASK`, ya no están atados a la demo fija.
+- Los entrypoints ahora aceptan tareas por argumentos `AGENT_TASK`.
 
 Consulta la [Hoja de Ruta](docs/en/ROADMAP.md) para más detalles.
 
