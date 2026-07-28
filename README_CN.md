@@ -39,19 +39,6 @@
 <br/>
 
 <div align="center">
-
-<a href="https://doloffer.com">
-  <img src="docs/assets/doloffer-banner-cn.png" alt="DolOffer - GPT 和 Claude 会员充值，正版订阅，售后无忧" width="800"/>
-</a>
-
-<sub><b>赞助位:</b> <a href="https://doloffer.com">DolOffer</a>（<a href="https://github.com/Doloffer-g/guide">GitHub 项目</a>）提供优惠价 GPT / Claude 会员充值，正版订阅，售后无忧。使用优惠码 <code>AI8888</code> 可享 9 折。</sub><br/>
-<sub><b>免责声明:</b> 这是付费赞助展示位。DolOffer 的服务、价格、可用性和售后支持均由 DolOffer 提供，购买前请自行查看其条款。</sub>
-
-</div>
-
-<br/>
-
-<div align="center">
 <img src="docs/assets/before_after.svg" alt="Before vs After RepoBrain" width="800"/>
 </div>
 
