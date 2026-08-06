@@ -32,7 +32,7 @@ Usa la skill integrada `agent-repo-init` para crear un repositorio limpio desde 
 Soporta modos `quick` y `full`, y expone un script portable en `skills/agent-repo-init/scripts/init_project.py`.
 
 ### ⚡️ Soporte Multi-Modelo
-Usa el endpoint OpenAI-compatible elegido por `rb-setup` (OpenAI, DeepSeek, Groq, DashScope, NVIDIA NIM, Ollama o personalizado).
+Usa el endpoint OpenAI-compatible elegido por `rb-setup` (OpenAI, OrcaRouter, DeepSeek, Groq, DashScope, NVIDIA NIM, Ollama o personalizado).
 
 ### 🔌 Soporte de LLM Externo
 Llama cualquier API compatible con OpenAI mediante la herramienta integrada `call_openai_chat` (soporta OpenAI, Azure, Ollama).
@@ -112,7 +112,7 @@ Llama cualquier API compatible con OpenAI mediante la herramienta integrada `cal
 ## ❓ Preguntas Frecuentes
 
 **P: ¿Qué proveedores LLM están soportados?**
-R: Ejecuta `rb-setup` y elige OpenAI, DeepSeek, Groq, DashScope, NVIDIA NIM, Ollama o un endpoint OpenAI-compatible personalizado. El comando escribe `OPENAI_BASE_URL`, `OPENAI_API_KEY` y `OPENAI_MODEL` en `.env`.
+R: Ejecuta `rb-setup` y elige OpenAI, OrcaRouter, DeepSeek, Groq, DashScope, NVIDIA NIM, Ollama o un endpoint OpenAI-compatible personalizado. El comando escribe `OPENAI_BASE_URL`, `OPENAI_API_KEY` y `OPENAI_MODEL` en `.env`.
 
 **P: ¿Cómo agrego una herramienta personalizada?**
 R: ¡Coloca un archivo Python en `repobrain_engine/tools/` con tus funciones. Sin registro necesario! Ver [Características Zero-Config](ZERO_CONFIG.md).

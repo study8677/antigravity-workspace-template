@@ -88,7 +88,7 @@ Sesión típica inicial: **rb-setup → rb-refresh → rb-ask**. Detalles abajo.
 
 ### `rb-setup` — configuración inicial
 
-Ejecútalo **una vez por proyecto**, justo después de instalar el plugin. Selector interactivo del proveedor LLM (OpenAI / DeepSeek / Groq / 阿里灵积 / NVIDIA NIM / Ollama local / cualquier endpoint OpenAI-compatible), luego escribe `.env` en la raíz del proyecto con `OPENAI_BASE_URL`, `OPENAI_API_KEY`, `OPENAI_MODEL`, `RB_ASK_TIMEOUT_SECONDS`. También asegura que `.env` esté en `.gitignore`. Sáltatelo si ya tienes un `.env` funcional.
+Ejecútalo **una vez por proyecto**, justo después de instalar el plugin. Selector interactivo del proveedor LLM (OpenAI / OrcaRouter / DeepSeek / Groq / 阿里灵积 / NVIDIA NIM / Ollama local / cualquier endpoint OpenAI-compatible), luego escribe `.env` en la raíz del proyecto con `OPENAI_BASE_URL`, `OPENAI_API_KEY`, `OPENAI_MODEL`, `RB_ASK_TIMEOUT_SECONDS`. También asegura que `.env` esté en `.gitignore`. Sáltatelo si ya tienes un `.env` funcional.
 
 ```
 # Claude Code
@@ -273,7 +273,7 @@ repobrain/
 
 **CLI** (`pip install .../cli`) — Cero deps de LLM. Inyecta plantillas, registra reportes y decisiones offline.
 
-**Engine** (`pip install .../engine`) — Runtime de conocimiento del repositorio. Alimenta `rb-ask`, `rb-refresh`, `rb-mcp`. Usa el endpoint OpenAI-compatible escrito por `rb-setup` (OpenAI, DeepSeek, Groq, DashScope, NVIDIA NIM, Ollama o personalizado).
+**Engine** (`pip install .../engine`) — Runtime de conocimiento del repositorio. Alimenta `rb-ask`, `rb-refresh`, `rb-mcp`. Usa el endpoint OpenAI-compatible escrito por `rb-setup` (OpenAI, OrcaRouter, DeepSeek, Groq, DashScope, NVIDIA NIM, Ollama o personalizado).
 
 **Nuevas actualizaciones de empaquetado de skills:**
 - `engine/repobrain_engine/skills/graph-retrieval/` — herramientas de recuperación orientadas a grafo para razonamiento de estructura y rutas de llamadas.

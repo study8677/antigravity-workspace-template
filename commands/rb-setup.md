@@ -23,6 +23,7 @@ Present these options:
 - **Groq** — fast, free tier
 - **阿里灵积 (DashScope)** — qwen 系列
 - **NVIDIA NIM** — generous free tier
+- **[OrcaRouter](https://www.orcarouter.ai)** — one key for 150+ models; gateway-level, zero-trust AI-agent security on the same endpoint
 - **Ollama 本地** — no key needed, runs locally
 - **Codex CLI 本地实验模式** — no API key, uses the user's local `codex login`; supports `rb-ask` only
 - **其他 OpenAI 兼容端点** — custom URL
@@ -40,6 +41,7 @@ Use this table to set the URL and suggest a model based on the provider:
 | Groq | `https://api.groq.com/openai/v1` | `llama-3.3-70b-versatile` |
 | 阿里灵积 | `https://dashscope.aliyuncs.com/compatible-mode/v1` | `qwen-max` |
 | NVIDIA NIM | `https://integrate.api.nvidia.com/v1` | `meta/llama-3.3-70b-instruct` |
+| OrcaRouter | `https://api.orcarouter.ai/v1` | `orcarouter/auto` |
 | Ollama 本地 | `http://localhost:11434/v1` | `llama3.2` (key can be `ollama`) |
 | Codex CLI 本地实验模式 | not used | `gpt-5.3-codex-spark` via `RB_HOST_MODEL` |
 | 其他 | ask the user | ask the user |
