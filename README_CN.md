@@ -270,7 +270,7 @@ repobrain/
 
 **CLI**（`pip install .../cli`）—— 零 LLM 依赖。注入模板，离线记录报告和决策。
 
-**Engine**（`pip install .../engine`）—— 代码库知识运行时。驱动 `rb-ask`、`rb-refresh`、`rb-mcp`。使用 `rb-setup` 写入的 OpenAI-compatible endpoint（OpenAI、DeepSeek、Groq、DashScope、NVIDIA NIM、Ollama 或自定义端点）。实验性本地模式可设置 `RB_HOST_RUNNER=codex`，让 `rb-ask` 使用用户本机 `codex login`，不走 API key；这个能力只面向个人本地使用，不作为托管产品后端承诺。
+**Engine**（`pip install .../engine`）—— 代码库知识运行时。驱动 `rb-ask`、`rb-refresh`、`rb-mcp`。使用 `rb-setup` 写入的 OpenAI-compatible endpoint（OpenAI、OrcaRouter、DeepSeek、Groq、DashScope、NVIDIA NIM、Ollama 或自定义端点）。实验性本地模式可设置 `RB_HOST_RUNNER=codex`，让 `rb-ask` 使用用户本机 `codex login`，不走 API key；这个能力只面向个人本地使用，不作为托管产品后端承诺。
 
 **新增 skill 封装更新：**
 - `engine/repobrain_engine/skills/graph-retrieval/` —— 面向结构与调用路径推理的图谱检索工具。

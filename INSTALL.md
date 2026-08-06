@@ -12,7 +12,7 @@
 
 1. **Marketplace add** — clones the plugin manifest into Claude Code's cache.
 2. **Install** — first session triggers `hooks/install_engine.py`, which installs the engine (`rb-ask`, `rb-refresh`, `rb-mcp`) and injects the `rb` CLI into the same `pipx` environment. It falls back to `pip --user` or prints manual commands if installation fails. Cross-platform (macOS / Linux / Windows).
-3. **Setup** — interactive: choose your LLM provider (OpenAI / DeepSeek / Groq / 阿里灵积 / NVIDIA / Ollama), paste your API key, writes a `.env` to the current project root and ensures it's git-ignored. For local Codex users, setup can instead write `RB_HOST_RUNNER=codex` for experimental no-API-key `rb-ask`.
+3. **Setup** — interactive: choose your LLM provider (OpenAI / OrcaRouter / DeepSeek / Groq / 阿里灵积 / NVIDIA / Ollama), paste your API key, writes a `.env` to the current project root and ensures it's git-ignored. For local Codex users, setup can instead write `RB_HOST_RUNNER=codex` for experimental no-API-key `rb-ask`.
 4. **Refresh** — runs `rb-refresh` directly and builds `.repobrain/` for the current project. The first refresh creates the project knowledge directory automatically. Full LLM refresh requires an API key; Codex host-runner mode uses scan-only refresh artifacts.
 5. **Ask** — runs `rb-ask` directly and queries the refreshed project knowledge base.
 

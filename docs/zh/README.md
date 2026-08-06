@@ -31,7 +31,7 @@
 支持 `quick` 与 `full` 两种模式，并提供可移植脚本 `skills/agent-repo-init/scripts/init_project.py`。
 
 ### ⚡️ 多模型支持
-通过 `rb-setup` 选择并写入 OpenAI-compatible endpoint（OpenAI、DeepSeek、Groq、DashScope、NVIDIA NIM、Ollama 或自定义端点）。
+通过 `rb-setup` 选择并写入 OpenAI-compatible endpoint（OpenAI、OrcaRouter、DeepSeek、Groq、DashScope、NVIDIA NIM、Ollama 或自定义端点）。
 
 ### 🔌 外部 LLM 支持
 通过内置 `call_openai_chat` 工具可调用任意 OpenAI 兼容 API（OpenAI、Azure、Ollama 等）。
@@ -105,7 +105,7 @@
 ## ❓ 常见问题
 
 **Q: 支持哪些 LLM provider？**
-A: 运行 `rb-setup`，选择 OpenAI、DeepSeek、Groq、DashScope、NVIDIA NIM、Ollama 或自定义 OpenAI-compatible endpoint。命令会写入 `.env` 中的 `OPENAI_BASE_URL`、`OPENAI_API_KEY`、`OPENAI_MODEL`。
+A: 运行 `rb-setup`，选择 OpenAI、OrcaRouter、DeepSeek、Groq、DashScope、NVIDIA NIM、Ollama 或自定义 OpenAI-compatible endpoint。命令会写入 `.env` 中的 `OPENAI_BASE_URL`、`OPENAI_API_KEY`、`OPENAI_MODEL`。
 
 **Q: 如何添加自定义工具？**
 A: 将 Python 文件放进 `repobrain_engine/tools/`，无需额外注册，见 [零配置特性](ZERO_CONFIG.md)。

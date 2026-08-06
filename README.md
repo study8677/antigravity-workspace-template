@@ -237,7 +237,7 @@ If installation or provider setup looks wrong, run `rb doctor --workspace .`.
 
 ### `rb-setup` — first-time configuration
 
-Run this **once per project**, right after installing the plugin. Interactive picker for the LLM provider (OpenAI / DeepSeek / Groq / 阿里灵积 / NVIDIA NIM / Ollama local / any OpenAI-compatible endpoint), then writes `.env` to the project root with `OPENAI_BASE_URL`, `OPENAI_API_KEY`, `OPENAI_MODEL`, `RB_ASK_TIMEOUT_SECONDS`. It can also write an explicit local Codex host-runner config for experimental no-API-key `rb-ask`. Also ensures `.env` is in `.gitignore`. Skip it if you already have a working `.env`.
+Run this **once per project**, right after installing the plugin. Interactive picker for the LLM provider (OpenAI / OrcaRouter / DeepSeek / Groq / 阿里灵积 / NVIDIA NIM / Ollama local / any OpenAI-compatible endpoint), then writes `.env` to the project root with `OPENAI_BASE_URL`, `OPENAI_API_KEY`, `OPENAI_MODEL`, `RB_ASK_TIMEOUT_SECONDS`. It can also write an explicit local Codex host-runner config for experimental no-API-key `rb-ask`. Also ensures `.env` is in `.gitignore`. Skip it if you already have a working `.env`.
 
 ### `rb-refresh` — build / refresh the knowledge base
 
@@ -468,7 +468,7 @@ repobrain/
 
 **CLI** (`pip install .../cli`) — Zero LLM deps. Injects templates, logs reports & decisions offline.
 
-**Engine** (`pip install .../engine`) — Repository knowledge runtime. Powers `rb-ask`, `rb-refresh`, `rb-mcp`. Uses the OpenAI-compatible endpoint written by `rb-setup` (OpenAI, DeepSeek, Groq, DashScope, NVIDIA NIM, Ollama, or custom). Experimental local mode can set `RB_HOST_RUNNER=codex` so `rb-ask` runs through the user's local `codex login` instead of an API key; this is for personal/local use and is not a hosted product backend.
+**Engine** (`pip install .../engine`) — Repository knowledge runtime. Powers `rb-ask`, `rb-refresh`, `rb-mcp`. Uses the OpenAI-compatible endpoint written by `rb-setup` (OpenAI, OrcaRouter, DeepSeek, Groq, DashScope, NVIDIA NIM, Ollama, or custom). Experimental local mode can set `RB_HOST_RUNNER=codex` so `rb-ask` runs through the user's local `codex login` instead of an API key; this is for personal/local use and is not a hosted product backend.
 
 **Skill packaging:**
 - `engine/repobrain_engine/skills/graph-retrieval/` — graph-oriented retrieval tools for structure and call-path reasoning.
