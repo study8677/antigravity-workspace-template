@@ -214,7 +214,7 @@ rb init my-project && cd my-project
 
 </details>
 
-See [INSTALL.md](INSTALL.md) for full details and troubleshooting.
+See [INSTALL.md](INSTALL.md) for full install details, verification commands such as `rb doctor`, and troubleshooting notes for PATH, MCP, and host-specific plugin behavior.
 
 ---
 
