@@ -82,9 +82,9 @@ full refresh.
 
 ## Verifying
 
+- **General check**: run `rb doctor --workspace <project>` after installation. It should report engine, provider, knowledge freshness, and log locations without exposing the API key.
 - **Claude Code**: `/repobrain:rb-ask "what does the engine do?"` should run `rb-ask` and print a routed answer.
 - **Codex CLI**: `/rb-ask "what does the engine do?"` (or `rb-ask "..." --workspace <project>` from the shell) should print a routed answer.
-- **Diagnostics**: `rb doctor --workspace <project>` should report engine, provider, knowledge freshness, and log locations without exposing the API key.
 
 ## Available slash commands
 
