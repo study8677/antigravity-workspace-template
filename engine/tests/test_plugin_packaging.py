@@ -71,6 +71,38 @@ def test_optional_mcp_example_passes_workspace_to_rb_mcp() -> None:
     assert server["env"]["WORKSPACE_PATH"] == "/path/to/project"
 
 
+def test_optional_dsh_overlay_passes_workspace_to_rb_mcp() -> None:
+    overlay = (REPO_ROOT / "docs" / "examples" / "repobrain.dsh.cordis.yml").read_text(
+        encoding="utf-8"
+    )
+
+    assert "@deepseek-ai/dsh-mcp-client" in overlay
+    assert "serverName: repobrain" in overlay
+    assert "transport: stdio" in overlay
+    assert "command: rb-mcp" in overlay
+    assert '"--workspace"' in overlay or "--workspace" in overlay
+    assert "/path/to/project" in overlay
+    assert "WORKSPACE_PATH" in overlay
+    assert "mcpServers" not in overlay
+
+
+def test_install_docs_keep_dsh_on_the_compatible_host_path() -> None:
+    install = (REPO_ROOT / "INSTALL.md").read_text(encoding="utf-8")
+
+    assert "## DeepSeek Harness" in install
+    assert "docs/examples/repobrain.dsh.cordis.yml" in install
+    assert "dsh web --patch" in install
+    assert "rb-ask" in install
+    assert "rb-refresh" in install
+    assert "/plugin marketplace add" in install
+    assert "is a compatible host, not a native RepoBrain plugin" in install
+    assert "rb-setup" in install
+    dsh_section = install.split("## DeepSeek Harness", 1)[1].split("## Verifying", 1)[0]
+    assert "mcpServers" not in dsh_section
+    assert "### Codex host-runner" not in dsh_section
+
+
+
 def test_slash_commands_run_cli_without_mcp_tools() -> None:
     ask_command = (REPO_ROOT / "commands" / "rb-ask.md").read_text(encoding="utf-8")
     refresh_command = (REPO_ROOT / "commands" / "rb-refresh.md").read_text(

@@ -1,0 +1,19 @@
+# Opt-in DeepSeek Harness overlay. This is not a native DSH plugin package.
+# Replace /path/to/project with the workspace rb-mcp should serve, then:
+#   dsh web --patch docs/examples/repobrain.dsh.cordis.yml
+# Or merge the insert block into $DSH_HOME/cordis.patch.yml.
+#
+# Requires rb-mcp on PATH (pipx/pip install of the engine package).
+# MCP stdio is trusted local code outside the DSH sandbox. Keep this overlay
+# opt-in; default Claude/Codex plugin installs do not auto-start rb-mcp.
+
+- insert:
+    - id: mcp-repobrain
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: repobrain
+        transport: stdio
+        command: rb-mcp
+        args: ["--workspace", "/path/to/project"]
+        env:
+          WORKSPACE_PATH: "/path/to/project"

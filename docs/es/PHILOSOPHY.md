@@ -20,9 +20,9 @@ El flujo principal es deliberadamente pequeño:
 ### Una Base de Conocimiento, Muchos Hosts
 
 El directorio generado `.repobrain/` es estado portable del proyecto. Claude
-Code, Codex CLI, Cursor, Windsurf, Gemini CLI, Cline, Aider y otros hosts deben
-beneficiarse del mismo modelo del repositorio, sin sistemas de contexto
-separados.
+Code, Codex CLI, Cursor, Windsurf, Gemini CLI, Cline, Aider, DeepSeek Harness y
+otros hosts deben beneficiarse del mismo modelo del repositorio, sin sistemas de
+contexto separados.
 
 ### Respuestas Fundamentadas Sobre Contexto Amplio
 
@@ -33,8 +33,10 @@ evidencia de líneas y contexto de grafo opcional.
 ### Los Plugins Son Canales de Entrega
 
 Claude Code y Codex CLI reciben comandos slash nativos porque es la forma más
-ergonómica para esos hosts. El límite del producto sigue siendo el motor de
-conocimiento: `rb-refresh`, `rb-ask` y los artefactos que producen.
+ergonómica para esos hosts. Otros hosts que ya hablan shell o MCP, incluido
+DeepSeek Harness, reutilizan la CLI y el overlay opcional de `rb-mcp` en lugar
+de un tercer paquete de plugin nativo. El límite del producto sigue siendo el
+motor de conocimiento: `rb-refresh`, `rb-ask` y los artefactos que producen.
 
 ### Compatibilidad Sin Bloqueo de Proveedor
 

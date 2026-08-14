@@ -80,11 +80,49 @@ This mode is ask-only and depends on the user's local Codex installation and
 login. It is not a hosted product backend and does not replace API-key-backed
 full refresh.
 
+## DeepSeek Harness
+
+DeepSeek Harness (`dsh`) is a compatible host, not a native RepoBrain plugin.
+It is also not the same thing as choosing DeepSeek as the `rb-setup` LLM
+provider. There is no `/plugin marketplace add` path and no Cordis bundle in
+this repository.
+
+Install the engine first, the same way Codex users do:
+
+```
+pipx install /absolute/path/to/repobrain/engine
+pipx inject --force --include-apps repobrain-engine /absolute/path/to/repobrain/cli
+rb doctor --help
+```
+
+Then pick one of these opt-in paths:
+
+1. **CLI via shell** — in a DSH session whose workspace is the project, run
+   `rb-refresh --workspace .` and `rb-ask "what does this project do?" --workspace .`.
+   DSH already loads `AGENTS.md` / `CLAUDE.md`.
+2. **MCP overlay** — replace `/path/to/project` in
+   [docs/examples/repobrain.dsh.cordis.yml](docs/examples/repobrain.dsh.cordis.yml)
+   and launch:
+
+```
+dsh web --patch /absolute/path/to/repobrain/docs/examples/repobrain.dsh.cordis.yml
+```
+
+You can instead merge that `insert` block into `$DSH_HOME/cordis.patch.yml`.
+The overlay starts `rb-mcp` over stdio. Treat it as trusted local code. Default
+Claude Code and Codex plugin installs do not auto-start this server.
+
+DSH is in developer preview; the overlay only uses the published
+`@deepseek-ai/dsh-mcp-client` fields. If `rb-mcp` is missing from PATH, DSH
+typically still boots and the tools stay unavailable until the engine is
+installed.
+
 ## Verifying
 
 - **General check**: run `rb doctor --workspace <project>` after installation. It should report engine, provider, knowledge freshness, and log locations without exposing the API key.
 - **Claude Code**: `/repobrain:rb-ask "what does the engine do?"` should run `rb-ask` and print a routed answer.
 - **Codex CLI**: `/rb-ask "what does the engine do?"` (or `rb-ask "..." --workspace <project>` from the shell) should print a routed answer.
+- **DeepSeek Harness**: `rb-ask "what does the engine do?" --workspace <project>` from the DSH shell, or `ask_project` after loading the overlay, should print a routed answer.
 
 ## Available slash commands
 
@@ -106,7 +144,10 @@ If you manually register `rb-mcp`, the `repobrain` MCP server exposes:
 - `ask_project(question)` — routed Q&A with file paths and line numbers
 - `refresh_project(quick=False)` — rebuild knowledge base
 
-Example config: [docs/examples/repobrain.mcp.json](docs/examples/repobrain.mcp.json)
+Example configs:
+
+- generic MCP host: [docs/examples/repobrain.mcp.json](docs/examples/repobrain.mcp.json)
+- DeepSeek Harness overlay: [docs/examples/repobrain.dsh.cordis.yml](docs/examples/repobrain.dsh.cordis.yml)
 
 ## Uninstall
 
@@ -150,3 +191,10 @@ The first install allows up to 15 minutes for the engine dependency set. On a sl
 
 **Codex CLI marketplace add fails or does not auto-load the plugin**
 Codex's marketplace/plugin workflow varies by CLI build. If `codex plugin marketplace add <path>` rejects the repo, or if your build only registers the marketplace without installing plugins, register the MCP server directly via your local Codex CLI MCP config and load skills + commands from `<path>/skills/` and `<path>/commands/` manually.
+
+**DeepSeek Harness overlay does not expose tools**
+Confirm `rb-mcp` is on PATH, replace `/path/to/project` in the overlay, and
+restart `dsh` so it reloads the patch. The overlay is opt-in; DSH does not
+discover `.claude-plugin/` or `commands/*.md`. This is not a DeepSeek API key
+problem — `rb-setup` choosing DeepSeek as the LLM provider does not configure
+the DSH host.
