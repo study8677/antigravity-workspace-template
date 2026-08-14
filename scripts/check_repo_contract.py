@@ -275,6 +275,18 @@ def check_productization_contract() -> None:
         require_contains(path, "RB_ALLOW_MCP=true")
         require_contains(path, "env")
 
+    require_contains("INSTALL.md", "## DeepSeek Harness")
+    require_contains("INSTALL.md", "docs/examples/repobrain.dsh.cordis.yml")
+    require_contains("INSTALL.md", "dsh web --patch")
+    require_contains("docs/examples/repobrain.dsh.cordis.yml", "@deepseek-ai/dsh-mcp-client")
+    require_contains("docs/examples/repobrain.dsh.cordis.yml", "command: rb-mcp")
+    require_contains("docs/examples/repobrain.dsh.cordis.yml", "--workspace")
+    require_absent("docs/examples/repobrain.dsh.cordis.yml", r"mcpServers")
+    require_contains(
+        "README.md",
+        "Cursor, Windsurf, Gemini CLI, VS Code + Copilot, Cline, Aider, DeepSeek Harness",
+    )
+
     require_contains("engine/.env.example", "RB_RETRIEVAL_MODE=compact")
     require_contains("engine/.env.example", "RB_ALLOW_MCP=false")
     require_contains("hooks/hooks.json", '"timeout": 900')

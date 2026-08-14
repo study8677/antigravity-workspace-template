@@ -334,7 +334,7 @@ Ask 管道采用**语义路径**：Router 读取 `map.md` → 选择模块 → �
 | Claude Code | `CLAUDE.md` |
 | Windsurf | `.windsurfrules` |
 | VS Code + Copilot | `.github/copilot-instructions.md` |
-| Gemini CLI / Codex | `AGENTS.md` |
+| Gemini CLI / Codex / DeepSeek Harness | `AGENTS.md` |
 | Cline | `.clinerules` |
 | Google Antigravity | `.repobrain/rules.md` |
 

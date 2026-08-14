@@ -337,7 +337,7 @@ La arquitectura está codificada en **archivos** — cualquier agente que lea ar
 | Claude Code | `CLAUDE.md` |
 | Windsurf | `.windsurfrules` |
 | VS Code + Copilot | `.github/copilot-instructions.md` |
-| Gemini CLI / Codex | `AGENTS.md` |
+| Gemini CLI / Codex / DeepSeek Harness | `AGENTS.md` |
 | Cline | `.clinerules` |
 | Google Antigravity | `.repobrain/rules.md` |
 

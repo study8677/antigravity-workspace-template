@@ -16,7 +16,7 @@ AI 编程工具最需要的不是一次性塞满整个仓库，而是能围绕�
 ### 一份知识库，多种宿主
 
 生成的 `.repobrain/` 是可移植项目状态。Claude Code、Codex CLI、Cursor、
-Windsurf、Gemini CLI、Cline、Aider 和其他宿主都应该读取同一份仓库模型，
+Windsurf、Gemini CLI、Cline、Aider、DeepSeek Harness 和其他宿主都应该读取同一份仓库模型，
 而不是各自维护割裂的上下文系统。
 
 ### 有证据的回答优于宽泛上下文
@@ -27,7 +27,9 @@ Windsurf、Gemini CLI、Cline、Aider 和其他宿主都应该读取同一份仓
 ### 插件只是交付渠道
 
 Claude Code 与 Codex CLI 有原生 slash commands，是因为这对这些宿主最顺手。
-产品边界仍然是知识引擎：`rb-refresh`、`rb-ask`，以及它们生成的产物。
+已经能跑 shell 或 MCP 的宿主（包括 DeepSeek Harness）复用 CLI 和可选的
+`rb-mcp` overlay，而不是再做第三套原生插件包。产品边界仍然是知识引擎：
+`rb-refresh`、`rb-ask`，以及它们生成的产物。
 
 ### 兼容而不锁定供应商
 

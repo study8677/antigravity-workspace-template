@@ -266,7 +266,7 @@ Creates a **new** project from the RepoBrain template. Two modes: `quick` (fast 
 | Layer | Channels | Contract |
 |:------|:---------|:---------|
 | Native plugins | Claude Code, Codex CLI | Bundled slash commands for `rb-setup`, `rb-refresh`, `rb-ask`, and `rb-init`. |
-| Compatible IDEs | Cursor, Windsurf, Gemini CLI, VS Code + Copilot, Cline, Aider | Use shared context files, the `rb`/`rb-*` CLI entrypoints, or an MCP client. |
+| Compatible IDEs | Cursor, Windsurf, Gemini CLI, VS Code + Copilot, Cline, Aider, DeepSeek Harness | Use shared context files, the `rb`/`rb-*` CLI entrypoints, or an MCP client. See `INSTALL.md` for the opt-in DSH overlay. |
 | Advanced tool integration | `rb-mcp` | Exposes `ask_project` and `refresh_project` for hosts that can call MCP tools. |
 | Workspace bootstrapping | `rb-init`, `rb init` | Starts a new repo or injects portable agent context into an existing one. |
 
