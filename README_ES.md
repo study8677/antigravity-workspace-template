@@ -603,7 +603,7 @@ Reporte completo (datos, metodología, tablas por celda, advertencias):
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=study8677/repobrain&type=Date)](https://star-history.com/#study8677/repobrain&Date)
+[![Star History Chart](https://star-history.dera.page/svg?repos=study8677/repobrain&type=Date)](https://star-history.dera.page/#study8677/repobrain&Date)
 
 ## Licencia
 

@@ -628,7 +628,7 @@ RepoBrain 在事实题上**比 Codex 快 2.1x**，在审计题上跟 Codex 速�
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=study8677/repobrain&type=Date)](https://star-history.com/#study8677/repobrain&Date)
+[![Star History Chart](https://star-history.dera.page/svg?repos=study8677/repobrain&type=Date)](https://star-history.dera.page/#study8677/repobrain&Date)
 
 ## 许可证
 
