@@ -9,7 +9,7 @@ dependencies = [
     "python-dotenv>=1.0,<2",
     "requests>=2.33.0,<3",
     "mcp[cli]>=1.0.0,<2",
-    "openai-agents[litellm]>=0.12,<0.19",
+    "openai-agents[litellm]>=0.12,<0.22",
     "tomli>=2.0,<3; python_version < \"3.11\"",
 ]
 
