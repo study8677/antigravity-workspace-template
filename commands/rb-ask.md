@@ -15,14 +15,16 @@ Use Bash:
 RB_ASK_TIMEOUT_SECONDS="${RB_ASK_TIMEOUT_SECONDS:-120}" rb-ask "$ARGUMENTS" --workspace "$PWD"
 ```
 
-If `.env` sets `RB_HOST_RUNNER=codex`, the same command uses the user's local
-Codex CLI login for `rb-ask` instead of an API key. This host-runner mode is
-ask-only; refresh should use scan-only artifacts or a configured `OPENAI_*`
-provider.
+If `.env` sets `RB_HOST_RUNNER` (`codex` or `generic`), the same command drives
+the user's local logged-in CLI (Codex / Trae / Claude / …) for `rb-ask` instead
+of an API key. The same host-runner backend also powers `rb-refresh` (tool-free
+stages run through the CLI; conventions and git insights degrade to
+deterministic output).
 
-如果 `.env` 设置了 `RB_HOST_RUNNER=codex`，同一个命令会通过用户本机 Codex CLI
-登录运行 `rb-ask`，不走 API key。这个 host-runner 模式只支持 ask；refresh
-应使用 scan-only 产物或已配置的 `OPENAI_*` provider。
+如果 `.env` 设置了 `RB_HOST_RUNNER`（`codex` 或 `generic`），同一个命令会通过
+用户本机已登录的 CLI（Codex / Trae / Claude / …）运行 `rb-ask`，不走 API key。
+同一套 host-runner 后端也支撑 `rb-refresh`（无工具阶段走 CLI，conventions 与
+git insights 降级为确定性产物）。
 
 使用 Bash：
 

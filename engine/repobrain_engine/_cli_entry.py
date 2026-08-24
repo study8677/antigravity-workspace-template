@@ -8,7 +8,9 @@ Provides:
 from __future__ import annotations
 
 import argparse
+import json
 import os
+import re
 import sys
 import traceback
 from pathlib import Path
@@ -39,6 +41,68 @@ def _run_ask_pipeline(workspace: Path, question: str) -> str:
     from repobrain_engine.hub.pipeline import ask_pipeline
 
     return asyncio.run(ask_pipeline(workspace, question))
+
+
+def _split_answer_sections(answer_text: str) -> dict[str, object]:
+    """Split a rendered answer into ``{answer, sources, limitations}``.
+
+    The pipeline returns a single Markdown string. The host-runner path
+    appends ``Sources:`` / ``Limitations:`` blocks (see
+    :meth:`HostRunnerAnswer.to_markdown`); the LLM/structured paths return
+    free-form prose with no such headers. This best-effort splitter peels off
+    those trailing blocks when present so programmatic callers get structured
+    fields, and otherwise leaves the whole text as ``answer`` with empty lists.
+
+    Args:
+        answer_text: The rendered answer string from ``ask_pipeline``.
+
+    Returns:
+        A dict with ``answer`` (str), ``sources`` (list[str]), and
+        ``limitations`` (list[str]).
+    """
+    sources: list[str] = []
+    limitations: list[str] = []
+
+    # Match a trailing "Limitations:" block, then a trailing "Sources:" block.
+    # Order matters: strip Limitations (which follows Sources) first so the
+    # Sources regex then sees a clean tail.
+    def _pop_block(text: str, header: str) -> tuple[str, list[str]]:
+        pattern = re.compile(
+            rf"\n\n{re.escape(header)}:\n((?:- .*(?:\n|$))+)\Z"
+        )
+        match = pattern.search(text)
+        if not match:
+            return text, []
+        items = [
+            line[2:].strip()
+            for line in match.group(1).splitlines()
+            if line.startswith("- ")
+        ]
+        return text[: match.start()], [item for item in items if item]
+
+    remaining, limitations = _pop_block(answer_text, "Limitations")
+    remaining, sources = _pop_block(remaining, "Sources")
+
+    return {
+        "answer": remaining.strip(),
+        "sources": sources,
+        "limitations": limitations,
+    }
+
+
+def _emit_ask_json(workspace: Path, question: str, answer_text: str) -> None:
+    """Print the ask result as a stable JSON envelope on stdout.
+
+    Guarantees a machine-parseable object so LLM tool wrappers never have to
+    scrape human-formatted text:
+
+        {"answer": ..., "sources": [...], "limitations": [...],
+         "workspace": ..., "question": ...}
+    """
+    payload = _split_answer_sections(answer_text)
+    payload["workspace"] = str(workspace)
+    payload["question"] = question
+    print(json.dumps(payload, ensure_ascii=False, indent=2))
 
 
 def _run_refresh_pipeline(workspace: Path, *, quick: bool, failed_only: bool):
@@ -129,19 +193,46 @@ def ask_main(argv: Sequence[str] | None = None) -> None:
     )
     parser.add_argument("question", help="Natural language question about the project")
     parser.add_argument("--workspace", default=".", help="Project root (default: cwd)")
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit a machine-readable JSON envelope "
+        "{answer, sources, limitations, workspace, question} instead of "
+        "human-formatted text. Errors are also emitted as JSON on stderr. "
+        "Use this when an LLM or script calls rb-ask programmatically.",
+    )
     args = _parse_args(parser, argv)
 
     workspace = Path(args.workspace).resolve()
     os.environ["WORKSPACE_PATH"] = str(workspace)
 
     try:
-        print(_run_ask_pipeline(workspace, args.question))
+        answer_text = _run_ask_pipeline(workspace, args.question)
+        if args.json:
+            _emit_ask_json(workspace, args.question, answer_text)
+        else:
+            print(answer_text)
     except KeyboardInterrupt:
         sys.exit(130)
     except ValueError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
+        if args.json:
+            print(
+                json.dumps({"error": str(exc)}, ensure_ascii=False),
+                file=sys.stderr,
+            )
+        else:
+            print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
     except Exception as exc:  # noqa: BLE001 - CLI boundary formats unknown failures
+        if args.json:
+            print(
+                json.dumps(
+                    {"error": f"{exc.__class__.__name__}: {_one_line_message(exc)}"},
+                    ensure_ascii=False,
+                ),
+                file=sys.stderr,
+            )
+            sys.exit(1)
         _handle_unexpected_cli_exception(exc)
 
 

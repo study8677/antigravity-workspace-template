@@ -29,6 +29,26 @@ rb-ask "<question>" --workspace .
 
 Use this before broad grep, rg, or file search when `.repobrain/` exists.
 
+If you are an LLM or script calling RepoBrain programmatically (not a human
+reading the terminal), add `--json` to get a stable, parseable envelope instead
+of formatted prose — no need to scrape the text:
+
+```bash
+rb-ask "<question>" --workspace . --json
+# → {"answer": "...", "sources": [...], "limitations": [...],
+#    "workspace": "...", "question": "..."}
+```
+
+On failure with `--json`, stdout stays empty and a `{"error": "..."}` object is
+written to stderr with a non-zero exit code, so callers can branch on it cleanly.
+
+This CLI is the lightweight way to let any agent that can run shell commands
+query RepoBrain — no long-running MCP server required. (An MCP server, `rb-mcp`,
+also exists for MCP-only clients, but the CLI is preferred when you can shell
+out.) Both paths run the same engine, so they work with an API-key provider or,
+with no API key, a local host runner (`RB_HOST_RUNNER` in `.env`) that drives a
+CLI you are already logged into (Codex / Trae / Claude / …).
+
 Run:
 
 ```bash

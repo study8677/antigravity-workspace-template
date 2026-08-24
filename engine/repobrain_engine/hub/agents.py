@@ -11,19 +11,21 @@ Ask Swarm (rb ask) — 3 agents:
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, Union
 
 if TYPE_CHECKING:
     from repobrain_engine.config import Settings
+    from repobrain_engine.hub.host_runner import HostRunnerModel
 
 
-def create_model(settings: "Settings") -> str:
-    """Resolve an LLM model identifier from settings.
+def create_model(settings: "Settings") -> "Union[str, HostRunnerModel]":
+    """Resolve an LLM model for the Agent SDK from settings.
 
     Priority:
     1. OPENAI_BASE_URL (any key)   → litellm/openai/<model> (custom endpoint)
     2. OPENAI_API_KEY (no base)    → <OPENAI_MODEL> (standard OpenAI)
-    3. None                        → raise ValueError
+    3. RB_HOST_RUNNER (no key)     → HostRunnerModel (local CLI, no API key)
+    4. None                        → raise ValueError
 
     When a custom OPENAI_BASE_URL is provided (e.g. NVIDIA, Ollama), the
     model is routed through litellm so that the Agent SDK can reach the
@@ -32,11 +34,17 @@ def create_model(settings: "Settings") -> str:
     *current* settings always take effect — avoiding first-caller-wins bugs
     in long-lived processes.
 
+    A configured API backend always wins so users who *have* keys keep the
+    full-capability refresh (tool-using / handoff swarms). Only when no
+    OpenAI backend is present do we fall back to a local host runner, which
+    drives the tool-free stages of refresh without an API key.
+
     Args:
         settings: Application settings.
 
     Returns:
-        A model string suitable for openai-agents[litellm].
+        A model string suitable for openai-agents[litellm], or a
+        :class:`HostRunnerModel` instance backed by a local CLI.
 
     Raises:
         ValueError: When no LLM backend is configured.
@@ -55,9 +63,29 @@ def create_model(settings: "Settings") -> str:
     if settings.OPENAI_API_KEY:
         return settings.OPENAI_MODEL
 
+    # No API key configured — drive a local headless CLI if requested.
+    from repobrain_engine.hub.host_runner import (
+        HostRunnerModel,
+        is_host_runner_enabled,
+    )
+
+    # Use getattr so callers passing a minimal settings stub (older tests,
+    # embedders) without the RB_HOST_* fields still get the ValueError path.
+    host_runner = getattr(settings, "RB_HOST_RUNNER", "")
+    if is_host_runner_enabled(host_runner):
+        return HostRunnerModel(
+            runner=host_runner,
+            workspace=settings.project_root_path,
+            model=getattr(settings, "RB_HOST_MODEL", None),
+            command=getattr(settings, "RB_HOST_COMMAND", None),
+            output_mode=getattr(settings, "RB_HOST_OUTPUT_MODE", None),
+            timeout_seconds=getattr(settings, "RB_HOST_TIMEOUT_SECONDS", None),
+        )
+
     raise ValueError(
         "No LLM configured. Run rb-setup or set OPENAI_BASE_URL, "
-        "OPENAI_API_KEY, and OPENAI_MODEL in .env"
+        "OPENAI_API_KEY, and OPENAI_MODEL in .env — or set RB_HOST_RUNNER "
+        "(codex/generic) to drive a local CLI without an API key."
     )
 
 
@@ -182,6 +210,48 @@ def build_refresh_swarm(model: str):
     )
 
     return scan_analyst
+
+
+_SINGLE_TURN_CONVENTION_INSTRUCTIONS = """\
+You are a code analyst and technical writer.
+
+Given a project scan report, analyze the codebase and write a concise
+conventions document in a **single pass** (no handoffs, no tools). Cover:
+- Primary language(s) and framework(s), with concrete evidence
+- Project directory structure and organization patterns
+- Code style observations (naming, structure, idioms)
+- Testing approach, framework, and coverage indicators
+- CI/CD setup, build system, and container configuration
+
+Be specific — cite file counts, directory names, and concrete config files
+you observe, not vague generalities.
+
+Keep it under 300 words. Output ONLY the Markdown content, no preamble,
+no commentary. Start directly with a heading.
+"""
+
+
+def build_single_turn_convention_agent(model):
+    """Build a tool-free, single-turn conventions agent (no handoffs).
+
+    This collapses the 3-hop ScanAnalyst → ArchitectureReviewer →
+    ConventionWriter handoff chain into one agent so it can be driven by a
+    :class:`~repobrain_engine.hub.host_runner.HostRunnerModel`, which only
+    supports single-turn, tool-free, handoff-free generation.
+
+    Args:
+        model: Model identifier string or a ``Model`` instance.
+
+    Returns:
+        A single Agent that emits the conventions Markdown in one turn.
+    """
+    Agent = _import_agent()
+    return Agent(
+        name="ConventionWriterSingleTurn",
+        instructions=_SINGLE_TURN_CONVENTION_INSTRUCTIONS,
+        model=model,
+        **_get_model_settings_kwargs(),
+    )
 
 
 # ---------------------------------------------------------------------------

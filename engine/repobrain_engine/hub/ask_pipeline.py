@@ -191,6 +191,7 @@ async def ask_pipeline(workspace: Path, question: str) -> str:
     """
     from repobrain_engine.config import get_settings
     from repobrain_engine.hub.host_runner import (
+        SUPPORTED_HOST_RUNNERS,
         HostRunnerError,
         is_host_runner_enabled,
         normalize_host_runner_name,
@@ -200,9 +201,10 @@ async def ask_pipeline(workspace: Path, question: str) -> str:
     host_runner = normalize_host_runner_name(settings.RB_HOST_RUNNER)
     if host_runner:
         if not is_host_runner_enabled(host_runner):
+            supported = ", ".join(sorted(SUPPORTED_HOST_RUNNERS))
             raise HostRunnerError(
                 f"Unsupported RB_HOST_RUNNER={settings.RB_HOST_RUNNER!r}. "
-                "Supported values: codex."
+                f"Supported values: {supported}."
             )
         answer = await _ask_with_host_runner(workspace, question, settings)
         return _prepend_workspace_health_notices(workspace, answer)
@@ -279,6 +281,8 @@ async def _ask_with_host_runner(workspace: Path, question: str, settings) -> str
         retrieval_evidence=retrieval_evidence,
         graph_context=graph_context,
         model=settings.RB_HOST_MODEL,
+        command=settings.RB_HOST_COMMAND,
+        output_mode=settings.RB_HOST_OUTPUT_MODE,
         timeout_seconds=settings.RB_HOST_TIMEOUT_SECONDS,
         max_context_chars=settings.RB_HOST_MAX_CONTEXT_CHARS,
     )

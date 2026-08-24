@@ -65,11 +65,23 @@ class Settings(BaseSettings):
     # Local host runner (experimental, no API key) Configuration
     RB_HOST_RUNNER: str = Field(
         default="",
-        description="Experimental local host runner for rb-ask, e.g. 'codex'.",
+        description="Experimental local host runner for rb-ask, e.g. 'codex' or 'generic'.",
     )
     RB_HOST_MODEL: str = Field(
         default="gpt-5.3-codex-spark",
-        description="Model passed to the local host runner.",
+        description="Model passed to the local host runner (used by the 'codex' runner).",
+    )
+    RB_HOST_COMMAND: str = Field(
+        default="",
+        description="Command template for RB_HOST_RUNNER=generic. Supports placeholders "
+        "{prompt_file}, {schema_file}, {output_file}, {workspace}. Example: "
+        "'trae exec --prompt {prompt_file}'. When {prompt_file} is omitted, the prompt "
+        "is sent on stdin.",
+    )
+    RB_HOST_OUTPUT_MODE: str = Field(
+        default="file",
+        description="Where the generic host runner reads its JSON answer from: "
+        "'file' (the {output_file}) or 'stdout'.",
     )
     RB_HOST_TIMEOUT_SECONDS: float = Field(
         default=240.0,

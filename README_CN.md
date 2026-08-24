@@ -87,7 +87,7 @@
 
 ### `rb-setup` —— 首次配置
 
-每个项目跑**一次**，在安装插件后立即执行。交互式选择 LLM 提供商（OpenAI / DeepSeek / Groq / 阿里灵积 / NVIDIA NIM / Ollama 本地 / 任意 OpenAI 兼容端点），然后在项目根目录写入 `.env`，包含 `OPENAI_BASE_URL`、`OPENAI_API_KEY`、`OPENAI_MODEL`、`RB_ASK_TIMEOUT_SECONDS`。也可以选择本地 Codex host-runner 实验模式，让无 API key 的 `rb-ask` 通过本机 `codex login` 运行。命令会把 `.env` 加入 `.gitignore`。如果已经有可用的 `.env` 可跳过。
+每个项目跑**一次**，在安装插件后立即执行。交互式向导会**先探测你本机已登录的无头 CLI**（Codex / Trae / Claude / Gemini），并把**免 API key 的本地 host-runner** 作为最省事的首选项——不用贴 key，RepoBrain 直接驱动你现有的 CLI 登录，`rb-ask` 和 `rb-refresh` 都能用。如果你更想用托管模型，向导同样提供 API-key 提供商（OpenAI / DeepSeek / Groq / 阿里灵积 / NVIDIA NIM / Ollama 本地 / 任意 OpenAI 兼容端点）。两种方式都会在项目根目录写入 `.env`——本地 CLI 写 `RB_HOST_RUNNER` + `RB_HOST_COMMAND`，提供商写 `OPENAI_BASE_URL` / `OPENAI_API_KEY` / `OPENAI_MODEL`——并把 `.env` 加入 `.gitignore`。如果已经有可用的 `.env` 可跳过。
 
 ```
 # Claude Code
@@ -111,7 +111,7 @@
 /rb-refresh quick
 ```
 
-耗时：小仓库几分钟，大仓库更久。需要先完成 `rb-setup`。完整 LLM refresh 仍需要 API key / OpenAI-compatible provider；本地 host-runner 模式下可用 `RB_REFRESH_SCAN_ONLY=1 rb-refresh --workspace .` 生成本地扫描知识产物。
+耗时：小仓库几分钟，大仓库更久。需要先完成 `rb-setup`。两种后端都能用：API key / OpenAI 兼容 provider 跑完整 LLM refresh；**本地 host-runner**（Codex / Trae / Claude / …）则通过你已登录的 CLI 跑无工具阶段（module 文档、`map.md`），并把工具/handoff 阶段（conventions、git insights）自动降级为确定性产物——全程无需 API key。只有当你想要"仅结构索引、无 LLM 叙述"的极速模式时，才加 `RB_REFRESH_SCAN_ONLY=1`。
 
 ### `rb-ask` —— 路由问答
 
@@ -126,6 +126,15 @@
 ```
 
 需要已有知识库 —— 如果出现"无索引"或空答复，先跑 `rb-refresh`。
+
+**让别的 AI / 脚本来调用？** 加 `--json`，拿到稳定可解析的信封，而不是给人看的富文本——这是让任意能跑 shell 命令的 agent 调用 RepoBrain 的最轻量方式，**无需 MCP 服务**：
+
+```bash
+rb-ask "认证逻辑是怎么实现的？" --workspace . --json
+# → {"answer": "...", "sources": [...], "limitations": [...], "workspace": "...", "question": "..."}
+```
+
+出错时 `--json` 会保持 stdout 为空，把 `{"error": "..."}` 写到 stderr 并返回非零退出码，调用方无需正则去扒文本。它跑的是同一套引擎，所以既支持 API-key 提供商，也支持免 API key 的本地 host-runner。详见 [让别的 AI 调用 RepoBrain（CLI，免 MCP）](#让别的-ai-调用-repobraincli免-mcp)。
 
 ### `rb-init` —— 新仓库脚手架
 
@@ -152,7 +161,7 @@
 # Claude Code（首次会话由 SessionStart hook 自动安装 rb CLI + Python 引擎）
 /plugin marketplace add study8677/repobrain
 /plugin install repobrain@repobrain
-/repobrain:rb-setup            # 交互式：选 LLM 提供商、贴 API key，自动写 .env
+/repobrain:rb-setup            # 交互式：用已登录的本地 CLI（Codex/Trae/Claude，免 key）或贴 API key，自动写 .env
 /repobrain:rb-refresh          # 直接运行 rb-refresh；首次 refresh 会自动创建 .repobrain/
 /repobrain:rb-ask "这个项目是怎么工作的？"  # 直接运行 rb-ask
 
@@ -339,6 +348,43 @@ Ask 管道采用**语义路径**：Router 读取 `map.md` → 选择模块 → �
 | Google Antigravity | `.repobrain/rules.md` |
 
 均由 `rb init` 生成：`AGENTS.md` 是唯一行为规则源，IDE 专属文件是轻量引导层，`.repobrain/` 保存共享的动态项目上下文。
+
+---
+
+## 让别的 AI 调用 RepoBrain（CLI，免 MCP）
+
+让别的 LLM / agent 用上 RepoBrain，最轻的方式就是 CLI —— 没有常驻进程，没有协议握手。任何能跑一条 shell 命令的 agent 都可以直接调：
+
+```bash
+rb-ask "<问题>" --workspace /path/to/project --json
+```
+
+然后读回一个稳定的 JSON 对象：
+
+```json
+{
+  "answer": "认证逻辑在 engine/hub/auth.py …",
+  "sources": ["engine/hub/auth.py:12", "engine/hub/auth.py:44"],
+  "limitations": ["host-runner 单轮模式"],
+  "workspace": "/path/to/project",
+  "question": "<问题>"
+}
+```
+
+- **成功** → 上面这个信封打到 stdout，退出码 `0`。
+- **失败** → stdout 保持为空；`{"error": "..."}` 写到 stderr，退出码非零 —— 调用方可直接分支处理，无需扒文本。
+
+**agent 怎么自动发现它：** `rb init` 会往项目里放 `AGENTS.md`（Claude Code 再加 `CLAUDE.md`），告诉任意 agent 遇到代码库问题优先用 `rb-ask` 而不是手动 grep / 读文件。Cursor、Windsurf、Codex、Gemini CLI 这些都会读这些文件，所以项目初始化后它们会自己去调 `rb-ask`。
+
+**零 API key：** `rb-ask` 跑的是同一套引擎，因此同样支持免 API key 的本地 host-runner。在项目 `.env` 里写下面几行（或跑 `rb-setup`），调用方的 AI 就会驱动你本机已登录的 CLI，全程不经手 key：
+
+```bash
+RB_HOST_RUNNER=generic
+RB_HOST_COMMAND=trae-cli exec --cd {workspace} --sandbox read-only --skip-git-repo-check --ephemeral -o {output_file}
+RB_HOST_OUTPUT_MODE=file
+```
+
+只要调用方能执行 shell 命令，就优先用这条 CLI 路径；只有面对**只认 MCP 协议**的客户端时，才用下面的 `rb-mcp`。
 
 ---
 
