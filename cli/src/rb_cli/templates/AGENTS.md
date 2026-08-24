@@ -20,14 +20,20 @@ Namespaces are one honking great idea -- let's do more of those!
 
 ## RepoBrain Knowledge Hub
 
-For broad codebase questions, architecture questions, "where is X implemented",
-"how does X work", dependency or impact analysis, or onboarding questions, prefer:
+**MANDATORY.** When `.repobrain/` exists, any *broad* codebase question MUST go
+through `rb-ask` first. Broad questions include: architecture, "where is X
+implemented", "how does X work", "what calls X", dependency or impact analysis,
+data flow, and onboarding.
 
 ```bash
 rb-ask "<question>" --workspace .
 ```
 
-Use this before broad grep, rg, or file search when `.repobrain/` exists.
+**Hard rule — do NOT manually `grep`, `rg`, `find`, or fan out file reads to
+answer a broad question before you have run `rb-ask` for it.** Doing so is
+wasteful and skips the grounded, cross-referenced answer the hub already has.
+`rb-ask` returns an answer backed by real source with file paths and line
+numbers; start there, then open only the specific files it points you to.
 
 If you are an LLM or script calling RepoBrain programmatically (not a human
 reading the terminal), add `--json` to get a stable, parseable envelope instead
@@ -61,9 +67,9 @@ Run this explicitly only to force a full rebuild:
 rb-refresh --workspace .
 ```
 
-Use direct file reads or rg only for:
+Direct file reads, `grep`, or `rg` are allowed **only** for:
 
 - verifying exact lines after `rb-ask` gives candidate files
-- narrow symbol or string searches
-- editing or debugging specific files
-- cases where `rb-ask` is unavailable or fails
+- narrow symbol or single-string lookups (not broad exploration)
+- editing or debugging specific files you already located
+- cases where `rb-ask` is genuinely unavailable or fails (state which)
