@@ -258,26 +258,29 @@ async def refresh_pipeline(workspace: Path, quick: bool = False, failed_only: bo
         refresh_scan_only = bool(settings.RB_REFRESH_SCAN_ONLY)
     else:
         refresh_scan_only = scan_only_raw.strip().lower() in {"1", "true", "yes"}
-    model: str | None = None
+    model: "str | object | None" = None
 
     module_docs_changed = False
+    host_runner_mode = False
     if not refresh_scan_only:
         from agents import set_tracing_disabled
         from repobrain_engine.hub.agents import create_model
-        from repobrain_engine.hub.host_runner import normalize_host_runner_name
+        from repobrain_engine.hub.host_runner import is_host_runner_model
 
         set_tracing_disabled(True)
-        if (
-            normalize_host_runner_name(settings.RB_HOST_RUNNER)
-            and not settings.OPENAI_API_KEY
-            and not settings.OPENAI_BASE_URL
-        ):
-            raise ValueError(
-                "RB_HOST_RUNNER is only supported for rb-ask. For no-key refresh, "
-                "run `RB_REFRESH_SCAN_ONLY=1 rb-refresh --workspace .` to build "
-                "local scan artifacts, or configure OPENAI_* for full LLM refresh."
-            )
         model = create_model(settings)
+        # When no API key is configured, create_model returns a HostRunnerModel
+        # (local CLI). It can only drive tool-free, single-turn, no-handoff
+        # agents, so tool-using / handoff refresh stages fall back gracefully.
+        host_runner_mode = is_host_runner_model(model)
+        if host_runner_mode:
+            print(
+                f"[0/3] No API key configured; using local host runner "
+                f"'{settings.RB_HOST_RUNNER}' for LLM stages. Tool-using and "
+                "handoff stages (conventions, git insights) will use "
+                "deterministic fallbacks.",
+                file=sys.stderr,
+            )
 
     rb_dir = _ensure_refresh_workspace_initialized(workspace)
     sha_file = rb_dir / ".last_refresh_sha"
@@ -351,11 +354,20 @@ async def refresh_pipeline(workspace: Path, quick: bool = False, failed_only: bo
         print("[2/3] Quick mode: no changed files; preserving conventions.md.", file=sys.stderr)
         refresh_status.stages["conventions"] = "skipped"
     elif not refresh_scan_only:
-        from repobrain_engine.hub.agents import build_refresh_agent
+        from repobrain_engine.hub.agents import (
+            build_refresh_agent,
+            build_single_turn_convention_agent,
+        )
 
         prompt = _format_scan_report(report)
 
-        agent = build_refresh_agent(model or "")
+        # The default conventions swarm uses agent handoffs, which a host
+        # runner cannot drive. In host-runner mode, collapse it into a single
+        # tool-free, single-turn agent instead.
+        if host_runner_mode:
+            agent = build_single_turn_convention_agent(model)
+        else:
+            agent = build_refresh_agent(model or "")
         try:
             from agents import Runner
         except ImportError:
@@ -709,25 +721,45 @@ async def refresh_pipeline(workspace: Path, quick: bool = False, failed_only: bo
             refresh_status.stages["git_insights"] = "skipped"
         else:
             print("  → RefreshGitAgent analyzing git history...", file=sys.stderr)
-            try:
-                git_agent = build_refresh_git_agent(model, workspace)
-                await _run_with_retry(
-                    Runner.run,
-                    git_agent,
-                    "Analyze the project's git history and write your git insights document.",
-                    max_turns=25,
-                    timeout=module_timeout,
-                    context="Git agent",
-                )
-                refresh_status.stages["git_insights"] = "success"
-            except Exception as exc:
-                print(f"  ⚠ RefreshGitAgent failed: {exc}", file=sys.stderr)
-                _mark_stage_failure(
-                    refresh_status,
-                    stage="git_insights",
-                    reason=str(exc),
-                    partial=True,
-                )
+            if host_runner_mode:
+                # The git agent relies on tools (git_log/git_diff/…), which a
+                # host runner cannot invoke. Write the pre-extracted git data
+                # deterministically instead of driving a tool-using agent.
+                try:
+                    _write_host_runner_git_insights(workspace)
+                    print(
+                        "  ✓ Wrote deterministic git insights (host-runner mode).",
+                        file=sys.stderr,
+                    )
+                    refresh_status.stages["git_insights"] = "partial"
+                except Exception as exc:
+                    print(f"  ⚠ Git insights fallback failed: {exc}", file=sys.stderr)
+                    _mark_stage_failure(
+                        refresh_status,
+                        stage="git_insights",
+                        reason=str(exc),
+                        partial=True,
+                    )
+            else:
+                try:
+                    git_agent = build_refresh_git_agent(model, workspace)
+                    await _run_with_retry(
+                        Runner.run,
+                        git_agent,
+                        "Analyze the project's git history and write your git insights document.",
+                        max_turns=25,
+                        timeout=module_timeout,
+                        context="Git agent",
+                    )
+                    refresh_status.stages["git_insights"] = "success"
+                except Exception as exc:
+                    print(f"  ⚠ RefreshGitAgent failed: {exc}", file=sys.stderr)
+                    _mark_stage_failure(
+                        refresh_status,
+                        stage="git_insights",
+                        reason=str(exc),
+                        partial=True,
+                    )
     else:
         print("[7/8] Scan-only mode: module agents skipped.", file=sys.stderr)
         refresh_status.stages["module_docs"] = "skipped"
@@ -1618,6 +1650,37 @@ def _write_agent_md_artifacts(
             safe_name = re.sub(r"[^a-zA-Z0-9_-]", "_", group_name)
             out_path = mod_dir / f"{safe_name}.md"
             out_path.write_text(md_content, encoding="utf-8")
+
+
+def _write_host_runner_git_insights(workspace: Path) -> Path:
+    """Write a deterministic git insights doc for host-runner mode.
+
+    The normal git stage drives a tool-using agent (git_log/git_diff/…),
+    which a :class:`HostRunnerModel` cannot invoke. This writes the
+    pre-extracted git data straight to ``.repobrain/modules/_git_insights.md``
+    — the same artifact the agent would have produced — so downstream Q&A
+    still has git context, just without LLM narration.
+
+    Args:
+        workspace: Project root directory.
+
+    Returns:
+        Path to the written git insights document.
+    """
+    from repobrain_engine.hub.scanner import extract_git_insights
+
+    git_data = extract_git_insights(workspace)
+    modules_dir = workspace / ".repobrain" / "modules"
+    modules_dir.mkdir(parents=True, exist_ok=True)
+    doc_path = modules_dir / "_git_insights.md"
+    content = (
+        "# Git Insights\n\n"
+        "_Generated in host-runner mode without an API key. This is the "
+        "pre-extracted git data; no LLM narration was applied._\n\n"
+        f"{git_data.strip()}\n"
+    )
+    doc_path.write_text(content, encoding="utf-8")
+    return doc_path
 
 
 def _build_agent_md_fallback(

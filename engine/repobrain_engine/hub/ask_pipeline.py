@@ -191,18 +191,22 @@ async def ask_pipeline(workspace: Path, question: str) -> str:
     """
     from repobrain_engine.config import get_settings
     from repobrain_engine.hub.host_runner import (
+        SUPPORTED_HOST_RUNNERS,
         HostRunnerError,
         is_host_runner_enabled,
         normalize_host_runner_name,
     )
 
     settings = get_settings()
+    await _maybe_auto_refresh(workspace, settings)
+
     host_runner = normalize_host_runner_name(settings.RB_HOST_RUNNER)
     if host_runner:
         if not is_host_runner_enabled(host_runner):
+            supported = ", ".join(sorted(SUPPORTED_HOST_RUNNERS))
             raise HostRunnerError(
                 f"Unsupported RB_HOST_RUNNER={settings.RB_HOST_RUNNER!r}. "
-                "Supported values: codex."
+                f"Supported values: {supported}."
             )
         answer = await _ask_with_host_runner(workspace, question, settings)
         return _prepend_workspace_health_notices(workspace, answer)
@@ -224,6 +228,85 @@ async def ask_pipeline(workspace: Path, question: str) -> str:
         label="ask",
     )
     return _prepend_workspace_health_notices(workspace, answer)
+
+
+#: Guard against re-entrancy: refresh_pipeline may itself trigger code paths
+#: that reach ask_pipeline. We never want an auto-refresh to recurse.
+_AUTO_REFRESH_IN_PROGRESS = False
+
+
+def _should_auto_refresh(workspace: Path, settings) -> str | None:
+    """Decide whether rb-ask should refresh itself before answering.
+
+    Lets the CLI keep its own knowledge base current instead of relying on an
+    agent to notice staleness and run ``rb-refresh`` by hand. Any tool that
+    calls ``rb-ask`` then inherits auto-refresh for free.
+
+    Args:
+        workspace: Project root directory.
+        settings: Loaded application settings.
+
+    Returns:
+        A short human-readable reason string when a refresh should run, or
+        ``None`` to answer against existing (or absent) artifacts as-is.
+    """
+    mode = str(getattr(settings, "RB_ASK_AUTO_REFRESH", "stale")).strip().lower()
+    if mode in {"off", "0", "false", "no", ""}:
+        return None
+
+    if not _structured_artifacts_available(workspace):
+        return "no knowledge base found"
+
+    if mode == "first-only":
+        return None
+
+    # mode == "stale" (or any other truthy value): also refresh on drift.
+    lag = _get_refresh_commit_lag(workspace)
+    threshold = int(getattr(settings, "RB_ASK_AUTO_REFRESH_LAG", 20))
+    if lag is not None and lag > threshold:
+        return f"knowledge base is {lag} commits behind HEAD"
+    return None
+
+
+async def _maybe_auto_refresh(workspace: Path, settings) -> None:
+    """Run ``refresh_pipeline`` in-process when the gate says the KB is stale.
+
+    Best-effort: a failed auto-refresh never blocks the answer — rb-ask then
+    proceeds against whatever artifacts exist (possibly none), exactly as
+    before this gate was added.
+
+    Args:
+        workspace: Project root directory.
+        settings: Loaded application settings.
+    """
+    global _AUTO_REFRESH_IN_PROGRESS
+    if _AUTO_REFRESH_IN_PROGRESS:
+        return
+
+    reason = _should_auto_refresh(workspace, settings)
+    if reason is None:
+        return
+
+    from repobrain_engine.hub.refresh_pipeline import refresh_pipeline
+
+    print(
+        f"[auto-refresh] {reason}; building knowledge base "
+        "(set RB_ASK_AUTO_REFRESH=off to disable)...",
+        file=sys.stderr,
+    )
+    _AUTO_REFRESH_IN_PROGRESS = True
+    try:
+        # quick=True keeps the pre-answer refresh light; a full rebuild is
+        # still available via an explicit `rb-refresh`.
+        await refresh_pipeline(workspace, quick=True)
+    except Exception as exc:  # noqa: BLE001 - never let refresh block the answer
+        print(
+            f"[auto-refresh] skipped ({exc.__class__.__name__}: {exc}); "
+            "answering with existing knowledge.",
+            file=sys.stderr,
+        )
+    finally:
+        _AUTO_REFRESH_IN_PROGRESS = False
 
 
 async def _ask_pipeline_once(workspace: Path, question: str) -> str:
@@ -279,6 +362,8 @@ async def _ask_with_host_runner(workspace: Path, question: str, settings) -> str
         retrieval_evidence=retrieval_evidence,
         graph_context=graph_context,
         model=settings.RB_HOST_MODEL,
+        command=settings.RB_HOST_COMMAND,
+        output_mode=settings.RB_HOST_OUTPUT_MODE,
         timeout_seconds=settings.RB_HOST_TIMEOUT_SECONDS,
         max_context_chars=settings.RB_HOST_MAX_CONTEXT_CHARS,
     )

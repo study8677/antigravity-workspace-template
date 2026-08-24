@@ -65,11 +65,23 @@ class Settings(BaseSettings):
     # Local host runner (experimental, no API key) Configuration
     RB_HOST_RUNNER: str = Field(
         default="",
-        description="Experimental local host runner for rb-ask, e.g. 'codex'.",
+        description="Experimental local host runner for rb-ask, e.g. 'codex' or 'generic'.",
     )
     RB_HOST_MODEL: str = Field(
         default="gpt-5.3-codex-spark",
-        description="Model passed to the local host runner.",
+        description="Model passed to the local host runner (used by the 'codex' runner).",
+    )
+    RB_HOST_COMMAND: str = Field(
+        default="",
+        description="Command template for RB_HOST_RUNNER=generic. Supports placeholders "
+        "{prompt_file}, {schema_file}, {output_file}, {workspace}. Example: "
+        "'trae exec --prompt {prompt_file}'. When {prompt_file} is omitted, the prompt "
+        "is sent on stdin.",
+    )
+    RB_HOST_OUTPUT_MODE: str = Field(
+        default="file",
+        description="Where the generic host runner reads its JSON answer from: "
+        "'file' (the {output_file}) or 'stdout'.",
     )
     RB_HOST_TIMEOUT_SECONDS: float = Field(
         default=240.0,
@@ -82,6 +94,21 @@ class Settings(BaseSettings):
     RB_REFRESH_SCAN_ONLY: bool = Field(
         default=False,
         description="Run refresh without LLM analysis and write scan artifacts only.",
+    )
+
+    # Auto-refresh gate for rb-ask (let the CLI refresh itself instead of
+    # relying on an agent to notice and run rb-refresh manually).
+    RB_ASK_AUTO_REFRESH: str = Field(
+        default="stale",
+        description="When rb-ask should build/rebuild the knowledge base on its "
+        "own: 'off' (never), 'first-only' (only when .repobrain is missing), or "
+        "'stale' (missing OR more than RB_ASK_AUTO_REFRESH_LAG commits behind "
+        "HEAD). Default 'stale' covers both first run and drift.",
+    )
+    RB_ASK_AUTO_REFRESH_LAG: int = Field(
+        default=20,
+        description="Commit lag past which 'stale' mode triggers an auto-refresh "
+        "before answering. Ignored when RB_ASK_AUTO_REFRESH is 'off'/'first-only'.",
     )
 
     # Memory Configuration

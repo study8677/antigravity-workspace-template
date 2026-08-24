@@ -451,10 +451,18 @@ def version_cmd() -> None:
 def ask_cmd(
     question: str = typer.Argument(..., help="Question about the project."),
     workspace: str = typer.Option(".", "--workspace", "-w", help="Project directory."),
+    json_output: bool = typer.Option(
+        False,
+        "--json",
+        help="Emit a machine-readable JSON envelope for programmatic callers.",
+    ),
 ) -> None:
     """Ask a question about the project (requires LLM)."""
     workspace_path = Path(workspace).resolve()
-    code = _run_hub(workspace_path, "ask", question)
+    args = ["ask", question]
+    if json_output:
+        args.append("--json")
+    code = _run_hub(workspace_path, *args)
     raise typer.Exit(code=code)
 
 

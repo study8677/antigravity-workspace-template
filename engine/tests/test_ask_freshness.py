@@ -133,3 +133,152 @@ async def test_ask_host_runner_prepends_workspace_health_notice(
         "⚠ Knowledge base is 1 commit(s) behind HEAD -- consider running rb-refresh --quick.\n"
     )
     assert answer.endswith("host answer")
+
+
+# ---------------------------------------------------------------------------
+# Auto-refresh gate: rb-ask refreshes itself instead of relying on an agent
+# ---------------------------------------------------------------------------
+
+
+class _AutoRefreshSettings:
+    """Minimal settings stub exposing only the auto-refresh knobs."""
+
+    def __init__(self, mode: str = "stale", lag: int = 20) -> None:
+        self.RB_ASK_AUTO_REFRESH = mode
+        self.RB_ASK_AUTO_REFRESH_LAG = lag
+
+
+def _write_full_kb(tmp_path: Path, *, sha: str | None = "abc123") -> None:
+    """Write artifacts that make _structured_artifacts_available() true."""
+    rb_dir = _write_repobrain(tmp_path, sha=sha)
+    (rb_dir / "map.md").write_text("api: docs", encoding="utf-8")
+    agents_dir = rb_dir / "agents"
+    agents_dir.mkdir()
+    (agents_dir / "api.md").write_text("agent docs", encoding="utf-8")
+
+
+def test_auto_refresh_off_never_triggers(tmp_path: Path) -> None:
+    from repobrain_engine.hub.ask_pipeline import _should_auto_refresh
+
+    # No KB at all, but mode is off → still no refresh.
+    assert _should_auto_refresh(tmp_path, _AutoRefreshSettings(mode="off")) is None
+
+
+def test_auto_refresh_first_run_triggers_when_kb_missing(tmp_path: Path) -> None:
+    from repobrain_engine.hub.ask_pipeline import _should_auto_refresh
+
+    reason = _should_auto_refresh(tmp_path, _AutoRefreshSettings(mode="first-only"))
+    assert reason == "no knowledge base found"
+
+
+def test_auto_refresh_first_only_skips_when_kb_present(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from repobrain_engine.hub.ask_pipeline import _should_auto_refresh
+
+    _write_full_kb(tmp_path)
+
+    # first-only must not trigger on drift, even if far behind HEAD.
+    def _fake_run(*args, **kwargs):
+        return subprocess.CompletedProcess(args[0], 0, stdout="999\n", stderr="")
+
+    monkeypatch.setattr("subprocess.run", _fake_run)
+
+    assert _should_auto_refresh(tmp_path, _AutoRefreshSettings(mode="first-only")) is None
+
+
+def test_auto_refresh_stale_triggers_past_threshold(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from repobrain_engine.hub.ask_pipeline import _should_auto_refresh
+
+    _write_full_kb(tmp_path)
+
+    def _fake_run(*args, **kwargs):
+        return subprocess.CompletedProcess(args[0], 0, stdout="25\n", stderr="")
+
+    monkeypatch.setattr("subprocess.run", _fake_run)
+
+    reason = _should_auto_refresh(tmp_path, _AutoRefreshSettings(mode="stale", lag=20))
+    assert reason == "knowledge base is 25 commits behind HEAD"
+
+
+def test_auto_refresh_stale_within_threshold_does_not_trigger(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from repobrain_engine.hub.ask_pipeline import _should_auto_refresh
+
+    _write_full_kb(tmp_path)
+
+    def _fake_run(*args, **kwargs):
+        return subprocess.CompletedProcess(args[0], 0, stdout="5\n", stderr="")
+
+    monkeypatch.setattr("subprocess.run", _fake_run)
+
+    assert _should_auto_refresh(tmp_path, _AutoRefreshSettings(mode="stale", lag=20)) is None
+
+
+@pytest.mark.asyncio
+async def test_maybe_auto_refresh_invokes_refresh_pipeline(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """When the gate says stale, refresh_pipeline is awaited before answering."""
+    import repobrain_engine.hub.refresh_pipeline as refresh_mod
+    from repobrain_engine.hub import ask_pipeline as ask_mod
+
+    calls: list[tuple[Path, bool]] = []
+
+    async def _fake_refresh(workspace, quick: bool = False, **kwargs):
+        calls.append((workspace, quick))
+
+    monkeypatch.setattr(refresh_mod, "refresh_pipeline", _fake_refresh)
+
+    # No KB → first-run trigger regardless of mode.
+    await ask_mod._maybe_auto_refresh(tmp_path, _AutoRefreshSettings(mode="stale"))
+
+    assert calls == [(tmp_path, True)]  # quick=True for the pre-answer refresh
+
+
+@pytest.mark.asyncio
+async def test_maybe_auto_refresh_swallows_refresh_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A failing auto-refresh must never block the answer."""
+    import repobrain_engine.hub.refresh_pipeline as refresh_mod
+    from repobrain_engine.hub import ask_pipeline as ask_mod
+
+    async def _boom(workspace, quick: bool = False, **kwargs):
+        raise RuntimeError("refresh exploded")
+
+    monkeypatch.setattr(refresh_mod, "refresh_pipeline", _boom)
+
+    # Should return normally despite the refresh error.
+    await ask_mod._maybe_auto_refresh(tmp_path, _AutoRefreshSettings(mode="first-only"))
+
+
+@pytest.mark.asyncio
+async def test_maybe_auto_refresh_is_reentrancy_guarded(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A refresh already in progress must not recurse into another refresh."""
+    import repobrain_engine.hub.refresh_pipeline as refresh_mod
+    from repobrain_engine.hub import ask_pipeline as ask_mod
+
+    called = False
+
+    async def _fake_refresh(workspace, quick: bool = False, **kwargs):
+        nonlocal called
+        called = True
+
+    monkeypatch.setattr(refresh_mod, "refresh_pipeline", _fake_refresh)
+    monkeypatch.setattr(ask_mod, "_AUTO_REFRESH_IN_PROGRESS", True)
+
+    await ask_mod._maybe_auto_refresh(tmp_path, _AutoRefreshSettings(mode="first-only"))
+
+    assert called is False
