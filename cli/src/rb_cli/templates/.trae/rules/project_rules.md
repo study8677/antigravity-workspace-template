@@ -11,16 +11,13 @@ first, then load dynamic context from `.repobrain/` (`conventions.md`,
 data flow, onboarding — you MUST run `rb-ask` first:
 
 ```bash
-rb-ask "<question>" --workspace . --json
+rb-ask "<question>" --workspace .
 ```
 
 **Hard rule: do NOT manually `grep`, `rg`, `find`, or fan out file reads to
 answer a broad question before you have run `rb-ask` for it.** It returns an
 answer grounded in real source with file paths and line numbers; start there,
-then open only the specific files it points you to. The `--json` form gives you
-a stable `{answer, sources, limitations, workspace, question}` object; on
-failure stdout stays empty and a `{"error": "..."}` object is written to stderr
-with a non-zero exit code, so you can branch on it cleanly.
+then open only the specific files it points you to.
 
 You do **not** need to run `rb-refresh` by hand: `rb-ask` builds the knowledge
 base itself on first use and rebuilds it when it drifts too far behind HEAD

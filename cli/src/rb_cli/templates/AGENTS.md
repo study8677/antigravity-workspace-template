@@ -35,19 +35,6 @@ wasteful and skips the grounded, cross-referenced answer the hub already has.
 `rb-ask` returns an answer backed by real source with file paths and line
 numbers; start there, then open only the specific files it points you to.
 
-If you are an LLM or script calling RepoBrain programmatically (not a human
-reading the terminal), add `--json` to get a stable, parseable envelope instead
-of formatted prose — no need to scrape the text:
-
-```bash
-rb-ask "<question>" --workspace . --json
-# → {"answer": "...", "sources": [...], "limitations": [...],
-#    "workspace": "...", "question": "..."}
-```
-
-On failure with `--json`, stdout stays empty and a `{"error": "..."}` object is
-written to stderr with a non-zero exit code, so callers can branch on it cleanly.
-
 This CLI is the lightweight way to let any agent that can run shell commands
 query RepoBrain — no long-running MCP server required. (An MCP server, `rb-mcp`,
 also exists for MCP-only clients, but the CLI is preferred when you can shell
