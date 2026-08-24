@@ -67,6 +67,14 @@
 > [Head-to-head benchmark ↓](#head-to-head-eval-repobrain-vs-codex-cli-vs-claude-code-2026-05-09)
 > Codex CLI users — drop the `repobrain:` prefix; the same four slash commands ship there too.
 
+### 🧠 Already using an AI IDE? Let it install RepoBrain for you — no API key.
+
+If you use Trae / Cursor / Claude Code / Codex (and it's logged in), you don't need to touch
+pip or an API key. **Paste [`AI_INSTALL.md`](AI_INSTALL.md) to your AI assistant and say
+"install RepoBrain in this project by following it."** It detects your logged-in CLI, wires up
+a zero-key backend, initializes the project, and self-tests — then you just ask it anything
+about your codebase.
+
 ---
 
 ## Why RepoBrain?

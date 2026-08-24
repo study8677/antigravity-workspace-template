@@ -12,8 +12,8 @@
 
 1. **Marketplace add** — clones the plugin manifest into Claude Code's cache.
 2. **Install** — first session triggers `hooks/install_engine.py`, which installs the engine (`rb-ask`, `rb-refresh`, `rb-mcp`) and injects the `rb` CLI into the same `pipx` environment. It falls back to `pip --user` or prints manual commands if installation fails. Cross-platform (macOS / Linux / Windows).
-3. **Setup** — interactive: choose your LLM provider (OpenAI / DeepSeek / Groq / 阿里灵积 / NVIDIA / Ollama), paste your API key, writes a `.env` to the current project root and ensures it's git-ignored. For local Codex users, setup can instead write `RB_HOST_RUNNER=codex` for experimental no-API-key `rb-ask`.
-4. **Refresh** — runs `rb-refresh` directly and builds `.repobrain/` for the current project. The first refresh creates the project knowledge directory automatically. Full LLM refresh requires an API key; Codex host-runner mode uses scan-only refresh artifacts.
+3. **Setup** — interactive: it **first detects any logged-in local headless CLI** (Codex / Trae / Claude / Gemini) and offers a **no-API-key local host runner** as the easiest default — no key to paste, RepoBrain drives your existing CLI login for both `rb-ask` and `rb-refresh`. If you prefer a hosted model, it also offers API-key providers (OpenAI / DeepSeek / Groq / 阿里灵积 / NVIDIA / Ollama). Either way it writes a `.env` to the current project root and ensures it's git-ignored.
+4. **Refresh** — runs `rb-refresh` directly and builds `.repobrain/` for the current project. The first refresh creates the project knowledge directory automatically. With an API key you get the full tool-using / handoff refresh; in local host-runner mode refresh still runs its tool-free stages (module docs, map) through your CLI and automatically degrades tool/handoff stages (conventions → single-turn agent, git insights → deterministic pre-extracted data).
 5. **Ask** — runs `rb-ask` directly and queries the refreshed project knowledge base.
 
 MCP is optional. If you want tool-style integration in an MCP-compatible host,
@@ -57,10 +57,13 @@ You can also keep using the raw CLI directly: `rb-refresh --workspace <project>`
 If your Codex build supports MCP and you want tool-style integration, register
 `rb-mcp --workspace <project>` separately in your Codex MCP configuration.
 
-### Codex host-runner mode without an API key
+### Local host-runner mode without an API key
 
-If you are only using RepoBrain locally and your Codex CLI is already logged
-in with ChatGPT, you can use the experimental host runner for `rb-ask`:
+If you are only using RepoBrain locally and have a logged-in headless CLI, you can drive it as
+the backend for **both `rb-ask` and `rb-refresh`** — no API key. The easiest path is `rb-setup`,
+which detects your CLI and writes this for you; to configure it by hand, pick your runner:
+
+**Codex** (built-in preset):
 
 ```
 codex login status
@@ -69,16 +72,34 @@ RB_HOST_RUNNER=codex
 RB_HOST_MODEL=gpt-5.3-codex-spark
 RB_HOST_TIMEOUT_SECONDS=240
 RB_HOST_MAX_CONTEXT_CHARS=60000
-RB_REFRESH_SCAN_ONLY=1
 EOF
+```
 
-rb-refresh --workspace .      # scan-only artifacts, no API key
+**Trae / any headless CLI** (generic runner via `RB_HOST_COMMAND`):
+
+```
+trae-cli login status
+cat >> .env <<'EOF'
+RB_HOST_RUNNER=generic
+RB_HOST_COMMAND=trae-cli exec --cd {workspace} --sandbox read-only --skip-git-repo-check --ephemeral -o {output_file}
+RB_HOST_OUTPUT_MODE=file
+RB_HOST_TIMEOUT_SECONDS=240
+EOF
+```
+
+Then:
+
+```
+rb-refresh --workspace .      # builds the knowledge base through your local CLI, no API key
 rb-ask "what does this project do?" --workspace .
 ```
 
-This mode is ask-only and depends on the user's local Codex installation and
-login. It is not a hosted product backend and does not replace API-key-backed
-full refresh.
+This depends on the user's local CLI installation and login. It is not a hosted product backend.
+Because a local CLI is **single-turn and tool-free**, refresh runs module docs and the map
+through your CLI and degrades the tool/handoff stages: conventions collapses to a single-turn
+agent, and git insights fall back to deterministic pre-extracted data. A configured API backend
+always wins and keeps the full tool-using / handoff refresh. Prefer a pure scan (no LLM at all)?
+Set `RB_REFRESH_SCAN_ONLY=1`.
 
 ## DeepSeek Harness
 
@@ -130,7 +151,7 @@ Same four commands ship to both hosts. Claude Code namespaces them as `/repobrai
 
 | Claude Code | Codex CLI | What it does |
 |---|---|---|
-| `/repobrain:rb-setup` | `/rb-setup` | **First-time setup** — interactive `.env` writer (LLM provider + key + model, or local Codex host runner) |
+| `/repobrain:rb-setup` | `/rb-setup` | **First-time setup** — interactive `.env` writer (logged-in local CLI = no key, or an API-key provider + model) |
 | `/repobrain:rb-refresh [quick]` | `/rb-refresh [quick]` | Rebuild / incrementally update the project knowledge base |
 | `/repobrain:rb-ask <question>` | `/rb-ask <question>` | Routed Q&A on the current codebase |
 | `/repobrain:rb-init <name>` | `/rb-init <name>` | Scaffold a new multi-agent repo from this template |
