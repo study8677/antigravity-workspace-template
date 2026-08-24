@@ -13,6 +13,7 @@ from repobrain_engine.hub.host_runner import (
     HostRunnerError,
     HostRunnerModel,
     build_codex_command,
+    build_codex_text_command,
     build_generic_command,
     is_host_runner_enabled,
     is_host_runner_model,
@@ -46,6 +47,57 @@ def test_codex_command_constructs_read_only_exec(tmp_path: Path) -> None:
     assert cmd[cmd.index("--output-schema") + 1] == str(schema_path)
     assert cmd[cmd.index("--output-last-message") + 1] == str(output_path)
     assert cmd[-1] == "answer this"
+
+
+def test_codex_command_omits_model_when_none(tmp_path: Path) -> None:
+    schema_path = tmp_path / "schema.json"
+    output_path = tmp_path / "answer.json"
+
+    cmd = build_codex_command(
+        workspace=tmp_path,
+        model=None,
+        schema_path=schema_path,
+        output_path=output_path,
+        prompt="answer this",
+    )
+
+    assert "--model" not in cmd
+    assert cmd[:2] == ["codex", "exec"]
+    assert cmd[cmd.index("--sandbox") + 1] == "read-only"
+    assert cmd[cmd.index("--output-schema") + 1] == str(schema_path)
+    assert cmd[cmd.index("--output-last-message") + 1] == str(output_path)
+    assert cmd[-1] == "answer this"
+
+
+def test_codex_text_command_includes_model_when_set(tmp_path: Path) -> None:
+    output_path = tmp_path / "text.txt"
+
+    cmd = build_codex_text_command(
+        workspace=tmp_path,
+        model="gpt-5.3-codex-spark",
+        output_path=output_path,
+        prompt="write docs",
+    )
+
+    assert cmd[cmd.index("--model") + 1] == "gpt-5.3-codex-spark"
+    assert cmd[cmd.index("--output-last-message") + 1] == str(output_path)
+    assert cmd[-1] == "write docs"
+
+
+def test_codex_text_command_omits_model_when_none(tmp_path: Path) -> None:
+    output_path = tmp_path / "text.txt"
+
+    cmd = build_codex_text_command(
+        workspace=tmp_path,
+        model=None,
+        output_path=output_path,
+        prompt="write docs",
+    )
+
+    assert "--model" not in cmd
+    assert cmd[:2] == ["codex", "exec"]
+    assert cmd[cmd.index("--output-last-message") + 1] == str(output_path)
+    assert cmd[-1] == "write docs"
 
 
 @pytest.mark.asyncio

@@ -69,7 +69,9 @@ which detects your CLI and writes this for you; to configure it by hand, pick yo
 codex login status
 cat >> .env <<'EOF'
 RB_HOST_RUNNER=codex
-RB_HOST_MODEL=gpt-5.3-codex-spark
+# RB_HOST_MODEL is optional. Leave it unset to use the model your codex login
+# defaults to; set it only to force a specific model, e.g.:
+# RB_HOST_MODEL=gpt-5.3-codex-spark
 RB_HOST_TIMEOUT_SECONDS=240
 RB_HOST_MAX_CONTEXT_CHARS=60000
 EOF
@@ -86,6 +88,10 @@ RB_HOST_OUTPUT_MODE=file
 RB_HOST_TIMEOUT_SECONDS=240
 EOF
 ```
+
+The generic runner never picks a model for you (`RB_HOST_MODEL` is ignored). To
+pin a model, add the CLI's own model flag directly to `RB_HOST_COMMAND`
+(e.g. `trae-cli exec --model <name> ...`).
 
 Then:
 

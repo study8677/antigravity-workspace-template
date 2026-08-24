@@ -22,7 +22,6 @@ from pathlib import Path
 from typing import Any
 
 
-DEFAULT_CODEX_HOST_MODEL = "gpt-5.3-codex-spark"
 DEFAULT_HOST_TIMEOUT_SECONDS = 600.0
 DEFAULT_HOST_MAX_CONTEXT_CHARS = 60000
 
@@ -167,13 +166,13 @@ async def run_codex_host_runner(
 def build_codex_command(
     *,
     workspace: Path,
-    model: str,
+    model: str | None,
     schema_path: Path,
     output_path: Path,
     prompt: str,
 ) -> list[str]:
     """Build the ``codex exec`` command for a read-only host-runner ask."""
-    return [
+    cmd = [
         "codex",
         "exec",
         "--cd",
@@ -182,14 +181,17 @@ def build_codex_command(
         "read-only",
         "--ephemeral",
         "--skip-git-repo-check",
-        "--model",
-        model,
+    ]
+    if model:
+        cmd += ["--model", model]
+    cmd += [
         "--output-schema",
         str(schema_path),
         "--output-last-message",
         str(output_path),
         prompt,
     ]
+    return cmd
 
 
 def _run_codex_host_runner_sync(
@@ -209,7 +211,7 @@ def _run_codex_host_runner_sync(
             "`codex login` before using RB_HOST_RUNNER=codex."
         )
 
-    model_name = (model or os.environ.get("RB_HOST_MODEL") or DEFAULT_CODEX_HOST_MODEL).strip()
+    model_name = _resolve_host_model(model)
     timeout = _resolve_timeout(timeout_seconds)
     max_chars = _resolve_max_context_chars(max_context_chars)
 
@@ -615,6 +617,13 @@ def _resolve_timeout(timeout_seconds: float | None) -> float:
     )
 
 
+def _resolve_host_model(model: str | None) -> str | None:
+    """Resolve the codex model from an explicit arg or env; None = let the CLI decide."""
+    resolved = model if model is not None else os.environ.get("RB_HOST_MODEL")
+    resolved = (resolved or "").strip()
+    return resolved or None
+
+
 def _resolve_max_context_chars(max_context_chars: int | None) -> int:
     """Resolve the max prompt size from an explicit arg or env fallback."""
     return _coerce_int(
@@ -649,12 +658,12 @@ def _redact_secrets(text: str) -> str:
 def build_codex_text_command(
     *,
     workspace: Path,
-    model: str,
+    model: str | None,
     output_path: Path,
     prompt: str,
 ) -> list[str]:
     """Build ``codex exec`` for a read-only free-form text generation."""
-    return [
+    cmd = [
         "codex",
         "exec",
         "--cd",
@@ -663,12 +672,15 @@ def build_codex_text_command(
         "read-only",
         "--ephemeral",
         "--skip-git-repo-check",
-        "--model",
-        model,
+    ]
+    if model:
+        cmd += ["--model", model]
+    cmd += [
         "--output-last-message",
         str(output_path),
         prompt,
     ]
+    return cmd
 
 
 def run_host_text_generation(
@@ -702,9 +714,7 @@ def run_host_text_generation(
                 "Codex CLI is not installed or not on PATH. Install Codex CLI and run "
                 "`codex login` before using RB_HOST_RUNNER=codex."
             )
-        model_name = (
-            model or os.environ.get("RB_HOST_MODEL") or DEFAULT_CODEX_HOST_MODEL
-        ).strip()
+        model_name = _resolve_host_model(model)
         with tempfile.TemporaryDirectory(prefix="rb-host-runner-") as tmp_dir:
             output_path = Path(tmp_dir) / "codex_host_text.txt"
             cmd = build_codex_text_command(

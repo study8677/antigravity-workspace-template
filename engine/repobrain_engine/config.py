@@ -68,8 +68,10 @@ class Settings(BaseSettings):
         description="Experimental local host runner for rb-ask, e.g. 'codex' or 'generic'.",
     )
     RB_HOST_MODEL: str = Field(
-        default="gpt-5.3-codex-spark",
-        description="Model passed to the local host runner (used by the 'codex' runner).",
+        default="",
+        description="Optional model for the 'codex' host runner's --model flag. "
+        "Leave empty to let the CLI use its own default model. Ignored by the "
+        "'generic' runner (put any model flag directly in RB_HOST_COMMAND).",
     )
     RB_HOST_COMMAND: str = Field(
         default="",

@@ -94,7 +94,8 @@ Check in this order and use the **first** one that is available and logged in:
 
    ```bash
    RB_HOST_RUNNER=codex
-   RB_HOST_MODEL=gpt-5.3-codex-spark
+   # RB_HOST_MODEL is optional; leave it unset to use the codex login's default
+   # model. Set it only to force a specific one, e.g. RB_HOST_MODEL=gpt-5.3-codex-spark
    RB_HOST_TIMEOUT_SECONDS=240
    RB_HOST_MAX_CONTEXT_CHARS=60000
    ```
