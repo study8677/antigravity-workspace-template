@@ -49,13 +49,17 @@ out.) Both paths run the same engine, so they work with an API-key provider or,
 with no API key, a local host runner (`RB_HOST_RUNNER` in `.env`) that drives a
 CLI you are already logged into (Codex / Trae / Claude / …).
 
-Run:
+You normally do **not** need to run `rb-refresh` yourself: `rb-ask` keeps its
+own knowledge base current. It builds the base automatically on first use (when
+`.repobrain/` is missing) and rebuilds it when it drifts too far behind HEAD.
+This is governed by `RB_ASK_AUTO_REFRESH` in `.env` (`stale` = first-run +
+drift, the default; `first-only`; or `off`).
+
+Run this explicitly only to force a full rebuild:
 
 ```bash
 rb-refresh --workspace .
 ```
-
-when `.repobrain/` is missing, stale, or after significant code changes.
 
 Use direct file reads or rg only for:
 

@@ -96,6 +96,21 @@ class Settings(BaseSettings):
         description="Run refresh without LLM analysis and write scan artifacts only.",
     )
 
+    # Auto-refresh gate for rb-ask (let the CLI refresh itself instead of
+    # relying on an agent to notice and run rb-refresh manually).
+    RB_ASK_AUTO_REFRESH: str = Field(
+        default="stale",
+        description="When rb-ask should build/rebuild the knowledge base on its "
+        "own: 'off' (never), 'first-only' (only when .repobrain is missing), or "
+        "'stale' (missing OR more than RB_ASK_AUTO_REFRESH_LAG commits behind "
+        "HEAD). Default 'stale' covers both first run and drift.",
+    )
+    RB_ASK_AUTO_REFRESH_LAG: int = Field(
+        default=20,
+        description="Commit lag past which 'stale' mode triggers an auto-refresh "
+        "before answering. Ignored when RB_ASK_AUTO_REFRESH is 'off'/'first-only'.",
+    )
+
     # Memory Configuration
     MEMORY_FILE: str = "memory/agent_memory.md"
     MEMORY_SUMMARY_FILE: str = "memory/agent_summary.md"
