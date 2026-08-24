@@ -5,3 +5,19 @@ Authoritative behavior rules live in `AGENTS.md`.
 Before acting:
 1. Read `AGENTS.md`.
 2. Load dynamic context from `.repobrain/` (`conventions.md`, `structure.md`, decisions, memory).
+
+## Hard rule — query the RepoBrain hub first
+
+When `.repobrain/` exists, any *broad* codebase question (architecture, "where
+is X implemented", "how does X work", "what calls X", dependency/impact
+analysis, data flow, onboarding) MUST go through `rb-ask` first:
+
+```bash
+rb-ask "<question>" --workspace .
+```
+
+Do **NOT** manually `grep`, `rg`, `find`, or fan out file reads to answer a
+broad question before you have run `rb-ask` for it. Manual search is allowed
+only to verify exact lines after `rb-ask` points at a file, for narrow
+single-symbol lookups, or when `rb-ask` is genuinely unavailable. See
+`AGENTS.md` for the full policy.
