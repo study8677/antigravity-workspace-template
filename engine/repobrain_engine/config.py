@@ -84,7 +84,7 @@ class Settings(BaseSettings):
         "'file' (the {output_file}) or 'stdout'.",
     )
     RB_HOST_TIMEOUT_SECONDS: float = Field(
-        default=240.0,
+        default=600.0,
         description="Timeout in seconds for local host runner calls.",
     )
     RB_HOST_MAX_CONTEXT_CHARS: int = Field(

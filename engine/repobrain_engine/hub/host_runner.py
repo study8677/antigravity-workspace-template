@@ -23,7 +23,7 @@ from typing import Any
 
 
 DEFAULT_CODEX_HOST_MODEL = "gpt-5.3-codex-spark"
-DEFAULT_HOST_TIMEOUT_SECONDS = 240.0
+DEFAULT_HOST_TIMEOUT_SECONDS = 600.0
 DEFAULT_HOST_MAX_CONTEXT_CHARS = 60000
 
 #: Host runners recognized by ``rb-ask``. ``codex`` is a built-in preset;
