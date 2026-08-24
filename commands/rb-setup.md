@@ -5,14 +5,14 @@ description: First-time setup. Configure the LLM API key, or a no-API-key local 
 You are running first-time setup for the RepoBrain plugin. The user just installed the plugin and needs an LLM backend configured before the ask/refresh commands will work (`/repobrain:rb-ask` in Claude Code; `/rb-ask` in Codex CLI). There are two families of backends:
 
 1. **API-key providers** (OpenAI-compatible) — write `OPENAI_*` keys.
-2. **Local host runners (no API key)** — drive a headless CLI the user already has logged in (Codex, Trae, Claude, Gemini, or any command that answers a prompt on stdin). This covers both `rb-ask` **and** `rb-refresh`: refresh runs its tool-free stages (module docs, map) through the host runner and automatically falls back to deterministic output for tool/handoff stages (conventions, git insights).
+2. **Local host runners (no API key)** — drive a headless CLI the user already has logged in (Codex, Trae, Claude, or any command that answers a prompt on stdin). This covers both `rb-ask` **and** `rb-refresh`: refresh runs its tool-free stages (module docs, map) through the host runner and automatically falls back to deterministic output for tool/handoff stages (conventions, git insights).
 
 Goal: write a `.env` file at the current workspace root.
 
 你正在执行 RepoBrain 插件的首次 setup。用户刚安装插件，需要先配置一个 LLM 后端，ask/refresh 命令才能正常工作（Claude Code 内为 `/repobrain:rb-ask`；Codex CLI 内为 `/rb-ask`）。后端分两类：
 
 1. **API-key 提供商**（OpenAI 兼容）—— 写入 `OPENAI_*` 配置。
-2. **本地 host runner（无需 API key）**—— 驱动用户本机已登录的无头 CLI（Codex、Trae、Claude、Gemini，或任意能在命令行吃 prompt、吐文本的命令）。这条路同时支持 `rb-ask` **和** `rb-refresh`：refresh 的无工具阶段（module 文档、map）走 host runner，工具/handoff 阶段（conventions、git insights）会自动降级为确定性产物。
+2. **本地 host runner（无需 API key）**—— 驱动用户本机已登录的无头 CLI（Codex、Trae、Claude，或任意能在命令行吃 prompt、吐文本的命令）。这条路同时支持 `rb-ask` **和** `rb-refresh`：refresh 的无工具阶段（module 文档、map）走 host runner，工具/handoff 阶段（conventions、git insights）会自动降级为确定性产物。
 
 目标是在当前工作区根目录写入 `.env` 文件。
 

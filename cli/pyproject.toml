@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "repobrain-cli"
-version = "2.0.1"
+version = "2.0.2"
 description = "Inject RepoBrain context files and offline helpers into any project."
 readme = "README.md"
 license = "MIT"
