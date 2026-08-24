@@ -54,11 +54,13 @@
 
 **与 Codex CLI 和 Claude Code 在三个真实 Python 仓库（`fastapi`、`requests`、`sqlmodel`）上做了 36 道题的三方对决——RepoBrain 事实题 99%、审计题 97%，事实题速度比 Codex 快 2.1×。** [查看对比](#三方对决repobrain-vs-codex-cli-vs-claude-code2026-05-09)
 
-### 🧠 已经在用 AI IDE？让它帮你装 RepoBrain —— 无需 API key。
+### 🧠 最快上手 —— 让你的 AI 帮你装（无需 API key）
 
-如果你在用 Trae / Cursor / Claude Code / Codex（且已登录），你**不用碰 pip，也不用 API key**。
-**把 [`AI_INSTALL.md`](AI_INSTALL.md) 整段贴给你的 AI 助手，说"照着它在这个项目里装好 RepoBrain"。**
-它会探测你已登录的 CLI、配好零-key 后端、初始化项目并自测——之后你直接问它关于代码库的任何问题即可。
+已经在用登录好的 AI IDE（Trae / Cursor / Claude Code / Codex）？不用碰 pip，也不用 API key ——**把下面这一句话贴给你的 AI 助手**，剩下的它全包（探测你已登录的 CLI、配好零-key 后端、初始化项目、自测）：
+
+> 阅读 https://github.com/study8677/repobrain/blob/main/AI_INSTALL.md 并照着它在这个项目里装好 RepoBrain。
+
+之后直接问你的 AI 关于代码库的任何问题即可。
 
 ```
 传统做法：                           RepoBrain 做法：
