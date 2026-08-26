@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from repobrain_engine.hub._utils import is_safe_path
+from repobrain_engine.hub.storage import knowledge_root
 
 
 def _workspace_root() -> Path:
@@ -106,7 +107,7 @@ def _read_knowledge_graph_rows(workspace: Path) -> tuple[list[dict[str, Any]], l
     Returns:
         Tuple of ``(nodes_rows, edges_rows)`` in normalized JSONL-like format.
     """
-    knowledge_graph_path = workspace / ".repobrain" / "knowledge_graph.json"
+    knowledge_graph_path = knowledge_root(workspace) / "knowledge_graph.json"
     if not knowledge_graph_path.exists() or not knowledge_graph_path.is_file():
         return [], []
 
@@ -164,7 +165,7 @@ def query_graph(query: str, max_hops: int = 2, workspace: str = ".") -> dict[str
     - nodes/edges: selected subgraph payload
     """
     ws = _resolve_workspace(workspace)
-    graph_dir = ws / ".repobrain" / "graph"
+    graph_dir = knowledge_root(ws) / "graph"
     max_rows = int(os.environ.get("RB_GRAPH_QUERY_MAX_ROWS", "2000"))
     max_rows = max(100, max_rows)
     nodes_rows = _read_jsonl(graph_dir / "nodes.jsonl", max_rows=max_rows)

@@ -85,7 +85,11 @@ def test_refresh_initialization_refuses_blocking_file(tmp_path: Path) -> None:
 
 
 @pytest.mark.asyncio
-async def test_refresh_pipeline_creates_conventions(tmp_path: Path, monkeypatch) -> None:
+async def test_refresh_pipeline_creates_conventions(
+    tmp_path: Path,
+    monkeypatch,
+    commit_workspace,
+) -> None:
     """refresh_pipeline writes conventions.md."""
     monkeypatch.setenv("WORKSPACE_PATH", str(tmp_path))
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
@@ -95,6 +99,8 @@ async def test_refresh_pipeline_creates_conventions(tmp_path: Path, monkeypatch)
 
     rb_dir = tmp_path / ".repobrain"
     rb_dir.mkdir()
+    (tmp_path / "main.py").write_text("value = 1\n", encoding="utf-8")
+    commit_workspace(tmp_path)
 
     mock_result = MagicMock()
     mock_result.final_output = "# Conventions\n\nThis is a Python project."
@@ -112,6 +118,9 @@ async def test_refresh_pipeline_creates_conventions(tmp_path: Path, monkeypatch)
 
         await pipeline_mod.refresh_pipeline(tmp_path, quick=False)
 
+    from repobrain_engine.hub.storage import knowledge_root
+
+    rb_dir = knowledge_root(tmp_path)
     conventions = rb_dir / "conventions.md"
     assert conventions.exists()
     assert "Python project" in conventions.read_text(encoding="utf-8")
@@ -127,6 +136,7 @@ async def test_refresh_pipeline_creates_conventions(tmp_path: Path, monkeypatch)
 async def test_refresh_scan_only_can_be_enabled_from_env_file(
     tmp_path: Path,
     monkeypatch,
+    commit_workspace,
 ) -> None:
     """No-key refresh can run in scan-only mode from project .env."""
     monkeypatch.setenv("WORKSPACE_PATH", str(tmp_path))
@@ -136,6 +146,8 @@ async def test_refresh_scan_only_can_be_enabled_from_env_file(
         "RB_REFRESH_SCAN_ONLY=1\nRB_HOST_RUNNER=codex\n",
         encoding="utf-8",
     )
+    (tmp_path / "main.py").write_text("value = 1\n", encoding="utf-8")
+    commit_workspace(tmp_path)
 
     from repobrain_engine.config import reset_settings
     from repobrain_engine.hub.refresh_pipeline import refresh_pipeline
@@ -145,7 +157,9 @@ async def test_refresh_scan_only_can_be_enabled_from_env_file(
     status = await refresh_pipeline(tmp_path, quick=False)
 
     assert status.stages["conventions"] == "skipped"
-    assert (tmp_path / ".repobrain" / "scan_report.json").exists()
+    from repobrain_engine.hub.storage import knowledge_root
+
+    assert (knowledge_root(tmp_path) / "scan_report.json").exists()
 
 
 @pytest.mark.asyncio

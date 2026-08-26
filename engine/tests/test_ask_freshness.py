@@ -122,12 +122,13 @@ async def test_ask_host_runner_prepends_workspace_health_notice(
     def _fake_run(*args, **kwargs):
         return subprocess.CompletedProcess(args[0], 0, stdout="1\n", stderr="")
 
-    monkeypatch.setattr("repobrain_engine.hub.host_runner.run_host_runner", _fake_host_runner)
     monkeypatch.setattr("subprocess.run", _fake_run)
 
-    from repobrain_engine.hub.ask_pipeline import ask_pipeline
+    from repobrain_engine.hub import ask_pipeline as ask_mod
 
-    answer = await ask_pipeline(tmp_path, "What changed?")
+    monkeypatch.setattr(ask_mod, "_ask_with_host_runner", lambda *args, **kwargs: _fake_host_runner())
+
+    answer = await ask_mod.ask_pipeline(tmp_path, "What changed?")
 
     assert answer.startswith(
         "⚠ Knowledge base is 1 commit(s) behind HEAD -- consider running rb-refresh --quick.\n"
@@ -136,7 +137,7 @@ async def test_ask_host_runner_prepends_workspace_health_notice(
 
 
 # ---------------------------------------------------------------------------
-# Auto-refresh gate: rb-ask refreshes itself instead of relying on an agent
+# Manual-refresh reminder: rb-ask never mutates knowledge
 # ---------------------------------------------------------------------------
 
 
@@ -171,7 +172,7 @@ def test_auto_refresh_first_run_triggers_when_kb_missing(tmp_path: Path) -> None
     assert reason == "no knowledge base found"
 
 
-def test_auto_refresh_first_only_skips_when_kb_present(
+def test_legacy_first_only_now_warns_on_any_committed_drift(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -179,13 +180,14 @@ def test_auto_refresh_first_only_skips_when_kb_present(
 
     _write_full_kb(tmp_path)
 
-    # first-only must not trigger on drift, even if far behind HEAD.
     def _fake_run(*args, **kwargs):
         return subprocess.CompletedProcess(args[0], 0, stdout="999\n", stderr="")
 
     monkeypatch.setattr("subprocess.run", _fake_run)
 
-    assert _should_auto_refresh(tmp_path, _AutoRefreshSettings(mode="first-only")) is None
+    assert _should_auto_refresh(tmp_path, _AutoRefreshSettings(mode="first-only")) == (
+        "knowledge base is 999 commits behind HEAD"
+    )
 
 
 def test_auto_refresh_stale_triggers_past_threshold(
@@ -205,7 +207,7 @@ def test_auto_refresh_stale_triggers_past_threshold(
     assert reason == "knowledge base is 25 commits behind HEAD"
 
 
-def test_auto_refresh_stale_within_threshold_does_not_trigger(
+def test_manual_notice_ignores_legacy_lag_threshold(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -218,15 +220,17 @@ def test_auto_refresh_stale_within_threshold_does_not_trigger(
 
     monkeypatch.setattr("subprocess.run", _fake_run)
 
-    assert _should_auto_refresh(tmp_path, _AutoRefreshSettings(mode="stale", lag=20)) is None
+    assert _should_auto_refresh(tmp_path, _AutoRefreshSettings(mode="stale", lag=20)) == (
+        "knowledge base is 5 commits behind HEAD"
+    )
 
 
 @pytest.mark.asyncio
-async def test_maybe_auto_refresh_invokes_refresh_pipeline(
+async def test_refresh_reminder_never_invokes_refresh_pipeline(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """When the gate says stale, refresh_pipeline is awaited before answering."""
+    """Ask emits a reminder but never executes refresh."""
     import repobrain_engine.hub.refresh_pipeline as refresh_mod
     from repobrain_engine.hub import ask_pipeline as ask_mod
 
@@ -240,15 +244,15 @@ async def test_maybe_auto_refresh_invokes_refresh_pipeline(
     # No KB → first-run trigger regardless of mode.
     await ask_mod._maybe_auto_refresh(tmp_path, _AutoRefreshSettings(mode="stale"))
 
-    assert calls == [(tmp_path, True)]  # quick=True for the pre-answer refresh
+    assert calls == []
 
 
 @pytest.mark.asyncio
-async def test_maybe_auto_refresh_swallows_refresh_failure(
+async def test_refresh_reminder_does_not_touch_refresh_failures(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """A failing auto-refresh must never block the answer."""
+    """The old refresh function is unreachable from the reminder path."""
     import repobrain_engine.hub.refresh_pipeline as refresh_mod
     from repobrain_engine.hub import ask_pipeline as ask_mod
 
@@ -262,11 +266,11 @@ async def test_maybe_auto_refresh_swallows_refresh_failure(
 
 
 @pytest.mark.asyncio
-async def test_maybe_auto_refresh_is_reentrancy_guarded(
+async def test_refresh_reminder_has_no_reentrancy_state(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """A refresh already in progress must not recurse into another refresh."""
+    """Reminder-only behavior has no mutable reentrancy guard."""
     import repobrain_engine.hub.refresh_pipeline as refresh_mod
     from repobrain_engine.hub import ask_pipeline as ask_mod
 
@@ -277,8 +281,6 @@ async def test_maybe_auto_refresh_is_reentrancy_guarded(
         called = True
 
     monkeypatch.setattr(refresh_mod, "refresh_pipeline", _fake_refresh)
-    monkeypatch.setattr(ask_mod, "_AUTO_REFRESH_IN_PROGRESS", True)
-
     await ask_mod._maybe_auto_refresh(tmp_path, _AutoRefreshSettings(mode="first-only"))
 
     assert called is False

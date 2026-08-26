@@ -80,7 +80,7 @@ Los mismos cuatro comandos slash funcionan tanto en **Claude Code** como en **Co
 | Claude Code | Codex CLI | Propósito |
 |---|---|---|
 | `/repobrain:rb-setup` | `/rb-setup` | Configuración inicial — elige proveedor LLM, escribe `.env` |
-| `/repobrain:rb-refresh [quick]` | `/rb-refresh [quick]` | Construye / refresca incrementalmente la base de conocimiento |
+| `/repobrain:rb-refresh [quick]` | `/rb-refresh [quick]` | Crea una base completa o actualiza manualmente solo los grupos Agent afectados |
 | `/repobrain:rb-ask <pregunta>` | `/rb-ask <pregunta>` | Q&A enrutada sobre el código actual |
 | `/repobrain:rb-init <nombre>` | `/rb-init <nombre>` | Crea un nuevo repo multi-agente desde esta plantilla |
 
@@ -100,7 +100,12 @@ Ejecútalo **una vez por proyecto**, justo después de instalar el plugin. Selec
 
 ### `rb-refresh` — construir / refrescar la base de conocimiento
 
-Despliega el clúster multi-agente para leer tu código: cada módulo obtiene su propio Agent que produce un documento de conocimiento en `.repobrain/agents/*.md`, más un `map.md` como índice de routing. Ejecútalo tras instalar, tras cambios de código significativos, o cuando `rb-ask` devuelva respuestas obsoletas. El primer refresh crea `.repobrain/` automáticamente — no hace falta un paso de init separado. Pasa `quick` para actualización incremental, `failed-only` para reintentar solo los módulos previamente fallidos.
+El primer refresh debe ser completo para crear una generación base. Después,
+`quick` compara solo commits, exige un worktree limpio y usa ImpactPlanner más
+un Verifier independiente para ejecutar únicamente los grupos Agent afectados.
+Nunca cambia automáticamente a refresh completo. `failed-only` reanuda los
+grupos fallidos o pendientes del mismo commit. `rb-ask` solo avisa de commits
+nuevos y nunca actualiza la base automáticamente.
 
 ```
 # Claude Code

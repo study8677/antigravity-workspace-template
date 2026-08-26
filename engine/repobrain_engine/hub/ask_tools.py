@@ -24,6 +24,7 @@ from typing import Callable
 from repobrain_engine.hub._constants import SKIP_DIRS
 from repobrain_engine.hub._utils import is_safe_path, should_skip_dir
 from repobrain_engine.hub.retrieval_graph import wrap_retrieval_tools
+from repobrain_engine.hub.storage import knowledge_root
 
 # Maximum search results returned by search_code.
 _MAX_SEARCH_RESULTS = 50
@@ -522,7 +523,7 @@ def create_write_tools(workspace: Path, module_name: str) -> dict[str, Callable]
         Dict with a single ``write_module_doc`` tool.
     """
     ws = workspace.resolve()
-    modules_dir = ws / ".repobrain" / "modules"
+    modules_dir = knowledge_root(ws) / "modules"
 
     def write_module_doc(content: str) -> str:
         """Write the module knowledge document.
@@ -553,7 +554,7 @@ def create_git_write_tools(workspace: Path) -> dict[str, Callable]:
         Dict with a single ``write_git_doc`` tool.
     """
     ws = workspace.resolve()
-    modules_dir = ws / ".repobrain" / "modules"
+    modules_dir = knowledge_root(ws) / "modules"
 
     def write_git_doc(content: str) -> str:
         """Write the git insights knowledge document.

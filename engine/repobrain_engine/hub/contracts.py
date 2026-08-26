@@ -19,8 +19,9 @@ from pydantic import BaseModel, Field, field_validator
 
 
 ClaimImportance = Literal["high", "medium", "low"]
-RefreshState = Literal["success", "partial", "failed", "skipped"]
+RefreshState = Literal["success", "partial", "failed", "skipped", "unresolved"]
 VerificationState = Literal["verified", "partially_verified", "unverified"]
+ImpactDecisionState = Literal["affected", "unaffected", "unresolved"]
 
 
 def utc_now_iso() -> str:
@@ -209,6 +210,72 @@ class FailureRecord(BaseModel):
     reason: str = Field(description="Human-readable failure reason.")
 
 
+class ChangeRecord(BaseModel):
+    """One committed-tree change considered by incremental refresh."""
+
+    path: str = Field(description="Target workspace-relative path.")
+    old_path: str | None = Field(default=None, description="Source path for a rename.")
+    change_type: Literal["added", "modified", "deleted", "renamed"]
+    patch: str = Field(default="", description="Bounded unified diff for this change.")
+    old_symbols: list[str] = Field(default_factory=list)
+    new_symbols: list[str] = Field(default_factory=list)
+    signature_changed: bool = False
+    imports_added: list[str] = Field(default_factory=list)
+    imports_removed: list[str] = Field(default_factory=list)
+    semantic_noop_hint: bool = False
+
+
+class ImpactCandidate(BaseModel):
+    """A stable Agent group offered to the impact planner."""
+
+    group_id: str
+    module: str
+    group_name: str
+    files: list[str] = Field(default_factory=list)
+    reasons: list[str] = Field(default_factory=list)
+    distance: int = Field(default=0, ge=0)
+
+
+class ImpactDecision(BaseModel):
+    """Planner or verifier decision for one Agent group."""
+
+    group_id: str
+    decision: ImpactDecisionState
+    reason: str
+    evidence: list[str] = Field(default_factory=list)
+    impact_path: list[str] = Field(default_factory=list)
+    propagate: bool = False
+    artifacts: list[str] = Field(default_factory=list)
+
+
+class ImpactVerification(BaseModel):
+    """Independent verification of a proposed impact set."""
+
+    decisions: list[ImpactDecision] = Field(default_factory=list)
+    missing_group_ids: list[str] = Field(default_factory=list)
+    extraneous_group_ids: list[str] = Field(default_factory=list)
+    approved: bool = False
+    reason: str = ""
+
+
+class ImpactPlan(BaseModel):
+    """Auditable output of the bounded Planner/Verifier loop."""
+
+    run_id: str
+    baseline_generation: str
+    baseline_head: str
+    target_head: str
+    round: int = Field(default=0, ge=0)
+    changes: list[ChangeRecord] = Field(default_factory=list)
+    candidates: list[ImpactCandidate] = Field(default_factory=list)
+    decisions: list[ImpactDecision] = Field(default_factory=list)
+    verifier: ImpactVerification | None = None
+    affected_group_ids: list[str] = Field(default_factory=list)
+    unaffected_group_ids: list[str] = Field(default_factory=list)
+    unresolved_group_ids: list[str] = Field(default_factory=list)
+    artifacts: list[str] = Field(default_factory=list)
+
+
 class RefreshStatus(BaseModel):
     """Top-level status artifact for a refresh run.
 
@@ -255,6 +322,13 @@ class RefreshStatus(BaseModel):
         default_factory=dict,
         description="HEAD SHA where each group status was last updated.",
     )
+    baseline_generation: str | None = None
+    target_head: str | None = None
+    impact_round: int = 0
+    affected_groups: list[str] = Field(default_factory=list)
+    unaffected_groups: list[str] = Field(default_factory=list)
+    unresolved_groups: list[str] = Field(default_factory=list)
+    impact_plan_path: str | None = None
 
     @property
     def exit_code(self) -> int:
@@ -266,7 +340,7 @@ class RefreshStatus(BaseModel):
         """
         if self.overall_status == "success":
             return 0
-        if self.overall_status == "partial":
+        if self.overall_status in {"partial", "unresolved"}:
             return 2
         return 1
 

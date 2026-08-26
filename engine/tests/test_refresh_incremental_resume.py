@@ -89,9 +89,9 @@ async def test_quick_refresh_no_changes_runs_zero_agents(
     _patch_common_refresh(tmp_path, monkeypatch, report=report, module_entries=[])
 
     with patch.dict("sys.modules", {"agents": _mock_agents_module(runner)}):
-        from repobrain_engine.hub.refresh_pipeline import refresh_pipeline
+        from repobrain_engine.hub.refresh_pipeline import _refresh_pipeline_into_generation
 
-        status = await refresh_pipeline(tmp_path, quick=True)
+        status = await _refresh_pipeline_into_generation(tmp_path, quick=True)
 
     assert status.stages["module_docs"] == "skipped"
     assert runner.await_count == 0
@@ -125,9 +125,9 @@ async def test_quick_refresh_single_file_reruns_only_owning_group(
     )
 
     with patch.dict("sys.modules", {"agents": _mock_agents_module(runner)}):
-        from repobrain_engine.hub.refresh_pipeline import refresh_pipeline
+        from repobrain_engine.hub.refresh_pipeline import _refresh_pipeline_into_generation
 
-        status = await refresh_pipeline(tmp_path, quick=True)
+        status = await _refresh_pipeline_into_generation(tmp_path, quick=True)
 
     module_agent_names = [
         call.args[0].name
@@ -182,9 +182,9 @@ async def test_refresh_resume_skips_groups_completed_at_same_head(
     )
 
     with patch.dict("sys.modules", {"agents": _mock_agents_module(runner)}):
-        from repobrain_engine.hub.refresh_pipeline import refresh_pipeline
+        from repobrain_engine.hub.refresh_pipeline import _refresh_pipeline_into_generation
 
-        status = await refresh_pipeline(tmp_path, quick=False)
+        status = await _refresh_pipeline_into_generation(tmp_path, quick=False)
 
     module_agent_names = [
         call.args[0].name

@@ -158,7 +158,7 @@ Same four commands ship to both hosts. Claude Code namespaces them as `/repobrai
 | Claude Code | Codex CLI | What it does |
 |---|---|---|
 | `/repobrain:rb-setup` | `/rb-setup` | **First-time setup** — interactive `.env` writer (logged-in local CLI = no key, or an API-key provider + model) |
-| `/repobrain:rb-refresh [quick]` | `/rb-refresh [quick]` | Rebuild / incrementally update the project knowledge base |
+| `/repobrain:rb-refresh [quick]` | `/rb-refresh [quick]` | Full baseline, or manually update only Agent groups judged affected by committed changes |
 | `/repobrain:rb-ask <question>` | `/rb-ask <question>` | Routed Q&A on the current codebase |
 | `/repobrain:rb-init <name>` | `/rb-init <name>` | Scaffold a new multi-agent repo from this template |
 
@@ -169,7 +169,7 @@ The plugin also bundles the `agent-repo-init` skill (description-matched in eith
 If you manually register `rb-mcp`, the `repobrain` MCP server exposes:
 
 - `ask_project(question)` — routed Q&A with file paths and line numbers
-- `refresh_project(quick=False)` — rebuild knowledge base
+- `refresh_project(quick=False)` — build a full generation baseline; `quick=True` manually runs the committed-diff ImpactPlanner/Verifier loop
 
 Example configs:
 

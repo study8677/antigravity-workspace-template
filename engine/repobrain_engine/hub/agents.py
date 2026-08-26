@@ -13,6 +13,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional, Union
 
+from repobrain_engine.hub.storage import knowledge_root
+
 if TYPE_CHECKING:
     from repobrain_engine.config import Settings
     from repobrain_engine.hub.host_runner import HostRunnerModel
@@ -524,7 +526,7 @@ def _read_module_knowledge(workspace: Path, module_name: str) -> str:
     Returns:
         Content of the module document(s), or a fallback message.
     """
-    rb_dir = workspace / ".repobrain"
+    rb_dir = knowledge_root(workspace)
 
     # New format: agents/{module}.md (single group)
     agent_md = rb_dir / "agents" / f"{module_name}.md"
@@ -566,7 +568,7 @@ def _read_git_knowledge(workspace: Path) -> str:
     Returns:
         Content of the git insights document, or a fallback message.
     """
-    doc_path = workspace / ".repobrain" / "modules" / "_git_insights.md"
+    doc_path = knowledge_root(workspace) / "modules" / "_git_insights.md"
     if doc_path.is_file():
         try:
             return doc_path.read_text(encoding="utf-8")
@@ -584,7 +586,7 @@ def _read_structure_map(workspace: Path) -> str:
     Returns:
         Content of structure.md, or a fallback message.
     """
-    doc_path = workspace / ".repobrain" / "structure.md"
+    doc_path = knowledge_root(workspace) / "structure.md"
     if doc_path.is_file():
         try:
             return doc_path.read_text(encoding="utf-8")
@@ -602,7 +604,7 @@ def _read_map_md(workspace: Path) -> str | None:
     Returns:
         Content of map.md, or None if not available.
     """
-    doc_path = workspace / ".repobrain" / "map.md"
+    doc_path = knowledge_root(workspace) / "map.md"
     if doc_path.is_file():
         try:
             return doc_path.read_text(encoding="utf-8")
@@ -620,7 +622,7 @@ def _read_module_registry(workspace: Path) -> str | None:
     Returns:
         Content of module_registry.md, or None if not available.
     """
-    doc_path = workspace / ".repobrain" / "module_registry.md"
+    doc_path = knowledge_root(workspace) / "module_registry.md"
     if doc_path.is_file():
         try:
             return doc_path.read_text(encoding="utf-8")
