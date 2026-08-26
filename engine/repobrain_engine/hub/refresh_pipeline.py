@@ -32,6 +32,7 @@ from repobrain_engine.hub.contracts import (
     ModuleRegistryEntry,
     RefreshStatus,
 )
+from repobrain_engine.hub.storage import knowledge_root
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +72,7 @@ def _ensure_refresh_workspace_initialized(workspace: Path) -> Path:
             f"directory: {workspace}"
         )
 
-    rb_dir = workspace / ".repobrain"
+    rb_dir = knowledge_root(workspace)
     if rb_dir.exists() and not rb_dir.is_dir():
         raise RuntimeError(
             "Project initialization failed: .repobrain exists but is not a "
@@ -230,7 +231,11 @@ async def _run_with_retry(
 
 
 
-async def refresh_pipeline(workspace: Path, quick: bool = False, failed_only: bool = False) -> RefreshStatus:
+async def _refresh_pipeline_into_generation(
+    workspace: Path,
+    quick: bool = False,
+    failed_only: bool = False,
+) -> RefreshStatus:
     """Scan project and update .repobrain/conventions.md.
 
     Args:
@@ -888,6 +893,92 @@ async def refresh_pipeline(workspace: Path, quick: bool = False, failed_only: bo
     return refresh_status
 
 
+async def _refresh_pipeline_generation_entry(
+    workspace: Path,
+    quick: bool = False,
+    failed_only: bool = False,
+) -> RefreshStatus:
+    """Refresh knowledge through an atomically promoted generation.
+
+    Full refresh builds the committed baseline.  Quick refresh delegates to
+    RepoBrain's bounded ImpactPlanner/ImpactVerifier loop and never falls back
+    to a full rebuild.
+    """
+    from repobrain_engine.hub.incremental import (
+        ensure_clean_worktree,
+        get_head_sha,
+        incremental_refresh,
+        initialize_full_generation_metadata,
+    )
+    from repobrain_engine.hub.storage import (
+        create_generation,
+        new_generation_id,
+        promote_generation,
+        remove_generation,
+        use_knowledge_root,
+    )
+
+    workspace = workspace.expanduser().resolve()
+    ensure_clean_worktree(workspace)
+    if quick:
+        return await incremental_refresh(
+            workspace,
+            failed_only=failed_only,
+        )
+
+    head_sha = get_head_sha(workspace)
+    generation = new_generation_id(head_sha)
+    generation_root = create_generation(
+        workspace,
+        generation,
+        clone_active=False,
+    )
+    try:
+        with use_knowledge_root(generation_root):
+            status = await _refresh_pipeline_into_generation(
+                workspace,
+                quick=False,
+                failed_only=failed_only,
+            )
+            if status.overall_status != "success":
+                remove_generation(generation_root)
+                return status
+            snapshot = initialize_full_generation_metadata(
+                workspace,
+                generation_root,
+                head_sha,
+                status,
+            )
+        if get_head_sha(workspace) != head_sha:
+            raise RuntimeError("HEAD changed during full refresh; no generation was promoted.")
+        promote_generation(
+            workspace,
+            generation=generation,
+            head_sha=head_sha,
+            merkle_root=str(snapshot.get("merkle_root", "")),
+        )
+        return status
+    except Exception:
+        remove_generation(generation_root)
+        raise
+
+
+async def refresh_pipeline(
+    workspace: Path,
+    quick: bool = False,
+    failed_only: bool = False,
+) -> RefreshStatus:
+    """Serialize and execute a generation-backed refresh."""
+    from repobrain_engine.hub.storage import refresh_lock
+
+    with refresh_lock(workspace):
+        return await _refresh_pipeline_generation_entry(
+            workspace,
+            quick=quick,
+            failed_only=failed_only,
+        )
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -978,7 +1069,8 @@ def _combine_states(
         "skipped": 1,
         "success": 2,
         "partial": 3,
-        "failed": 4,
+        "unresolved": 4,
+        "failed": 5,
     }
     left = current if current in priority else "success"
     right = new if new in priority else "success"
@@ -1007,6 +1099,8 @@ def _aggregate_states(
         return skipped_state
     if "failed" in normalized:
         return "failed"
+    if "unresolved" in normalized:
+        return "unresolved"
     if "partial" in normalized:
         return "partial"
     if "success" in normalized:
@@ -1670,7 +1764,7 @@ def _write_host_runner_git_insights(workspace: Path) -> Path:
     from repobrain_engine.hub.scanner import extract_git_insights
 
     git_data = extract_git_insights(workspace)
-    modules_dir = workspace / ".repobrain" / "modules"
+    modules_dir = knowledge_root(workspace) / "modules"
     modules_dir.mkdir(parents=True, exist_ok=True)
     doc_path = modules_dir / "_git_insights.md"
     content = (
@@ -1802,7 +1896,7 @@ def _build_module_registry_entries(
         resolve_module_path,
     )
 
-    modules_dir = workspace / ".repobrain" / "modules"
+    modules_dir = knowledge_root(workspace) / "modules"
     entries: list[ModuleRegistryEntry] = []
     for module_name in detect_modules(workspace):
         facts_path = modules_dir / f"{module_name}.facts.json"
@@ -2182,7 +2276,7 @@ async def _generate_map_md(workspace: Path, model: str) -> str:
             "OpenAI Agent SDK not found. Install: pip install repobrain-engine"
         ) from None
 
-    agents_dir = workspace / ".repobrain" / "agents"
+    agents_dir = knowledge_root(workspace) / "agents"
     if not agents_dir.exists():
         return _build_fallback_map_md(workspace)
 
@@ -2289,7 +2383,7 @@ def _build_fallback_map_md(workspace: Path) -> str:
         return "# Module Map\n\n(No modules detected)\n"
 
     lines = ["# Module Map\n"]
-    agents_dir = workspace / ".repobrain" / "agents"
+    agents_dir = knowledge_root(workspace) / "agents"
 
     for mod in modules:
         mod_path = resolve_module_path(workspace, mod)
@@ -2332,7 +2426,7 @@ async def _generate_module_registry(workspace: Path, model: str) -> str:
     """
     from repobrain_engine.hub.scanner import detect_modules
 
-    rb_dir = workspace / ".repobrain"
+    rb_dir = knowledge_root(workspace)
     modules = detect_modules(workspace)
 
     # -- Collect per-module evidence --
@@ -2533,7 +2627,7 @@ def _build_fallback_registry(workspace: Path) -> str:
         resolve_module_path,
     )
 
-    rb_dir = workspace / ".repobrain"
+    rb_dir = knowledge_root(workspace)
     modules = detect_modules(workspace)
     if not modules:
         return ""

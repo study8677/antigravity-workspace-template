@@ -374,6 +374,7 @@ def test_unsupported_language_semantics_degrade_gracefully(tmp_path: Path) -> No
 def test_realistic_go_refresh_pipeline_emits_semantic_diagnostics(
     tmp_path: Path,
     monkeypatch,
+    commit_workspace,
 ) -> None:
     """Realistic Go layouts should emit stable diagnostics through refresh_pipeline."""
     _write_realistic_go_refresh_workspace(tmp_path)
@@ -381,9 +382,12 @@ def test_realistic_go_refresh_pipeline_emits_semantic_diagnostics(
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     monkeypatch.delenv("OPENAI_BASE_URL", raising=False)
     monkeypatch.setenv("RB_REFRESH_SCAN_ONLY", "1")
+    commit_workspace(tmp_path)
 
     status = asyncio.run(refresh_pipeline(tmp_path, quick=False))
-    graph = json.loads((tmp_path / ".repobrain" / "knowledge_graph.json").read_text(encoding="utf-8"))
+    from repobrain_engine.hub.storage import knowledge_root
+
+    graph = json.loads((knowledge_root(tmp_path) / "knowledge_graph.json").read_text(encoding="utf-8"))
 
     assert status.overall_status == "success"
     assert graph["schema"] == "repobrain-knowledge-graph-v2"
@@ -409,6 +413,7 @@ def test_realistic_go_refresh_pipeline_emits_semantic_diagnostics(
 def test_mixed_language_refresh_pipeline_normalizes_nested_go_modules(
     tmp_path: Path,
     monkeypatch,
+    commit_workspace,
 ) -> None:
     """Mixed-language refresh should normalize nested Go module identities correctly."""
     _write_mixed_language_refresh_workspace(tmp_path)
@@ -416,9 +421,12 @@ def test_mixed_language_refresh_pipeline_normalizes_nested_go_modules(
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     monkeypatch.delenv("OPENAI_BASE_URL", raising=False)
     monkeypatch.setenv("RB_REFRESH_SCAN_ONLY", "1")
+    commit_workspace(tmp_path)
 
     status = asyncio.run(refresh_pipeline(tmp_path, quick=False))
-    graph = json.loads((tmp_path / ".repobrain" / "knowledge_graph.json").read_text(encoding="utf-8"))
+    from repobrain_engine.hub.storage import knowledge_root
+
+    graph = json.loads((knowledge_root(tmp_path) / "knowledge_graph.json").read_text(encoding="utf-8"))
     node_ids = {node["id"] for node in graph["nodes"] if isinstance(node, dict)}
     import_edges = [edge for edge in graph["edges"] if isinstance(edge, dict) and edge.get("type") == "imports"]
 

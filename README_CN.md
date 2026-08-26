@@ -107,7 +107,12 @@
 
 ### `rb-refresh` —— 构建 / 刷新知识库
 
-部署多智能体集群阅读代码：每个模块由专属 Agent 生成知识文档（`.repobrain/agents/*.md`），并由 Map Agent 产出 `map.md` 路由索引。在安装后、重要代码改动后、或 `rb-ask` 出现陈旧答复时运行。首次 refresh 会自动创建 `.repobrain/` 目录，无需单独初始化。传 `quick` 做增量更新，传 `failed-only` 仅重跑上次失败的模块。
+部署多智能体集群阅读代码：每个模块由专属 Agent 生成知识文档，并建立 generation
+快照、稳定分组和依赖基线。首次必须运行一次完整 refresh。之后传 `quick` 时只比较
+上次成功 generation 到当前 HEAD 的**已提交变更**：RepoBrain 先用依赖图缩小候选，
+再由 ImpactPlanner 与独立 Verifier 判断真正受影响的 Agent 分组，只执行获批分组。
+quick 要求 Git 工作区干净，不会自动降级成全量刷新；传 `failed-only` 可续跑同一目标
+提交中失败或待处理的分组。
 
 ```
 # Claude Code
@@ -120,6 +125,9 @@
 ```
 
 耗时：小仓库几分钟，大仓库更久。需要先完成 `rb-setup`。两种后端都能用：API key / OpenAI 兼容 provider 跑完整 LLM refresh；**本地 host-runner**（Codex / Trae / Claude / …）则通过你已登录的 CLI 跑无工具阶段（module 文档、`map.md`），并把工具/handoff 阶段（conventions、git insights）自动降级为确定性产物——全程无需 API key。只有当你想要"仅结构索引、无 LLM 叙述"的极速模式时，才加 `RB_REFRESH_SCAN_ONLY=1`。
+
+`rb-ask` 只读取当前 active generation。发现新 commit 时会提醒运行
+`rb-refresh --quick`，但不会在问答过程中自动修改知识库。
 
 ### `rb-ask` —— 路由问答
 

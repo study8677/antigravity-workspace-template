@@ -25,6 +25,7 @@ from typing import Callable
 from uuid import uuid4
 
 from repobrain_engine.hub._utils import env_int
+from repobrain_engine.hub.storage import knowledge_root
 
 
 # ---------------------------------------------------------------------------
@@ -294,7 +295,7 @@ def record_retrieval_graph(
     }
 
     if mode == "full":
-        out_dir = workspace / ".repobrain" / "retrieval_graphs"
+        out_dir = knowledge_root(workspace) / "retrieval_graphs"
         out_dir.mkdir(parents=True, exist_ok=True)
         safe_tool = re.sub(r"[^0-9A-Za-z_-]", "_", tool_name)
         base = out_dir / f"{safe_tool}_{retrieval_id}"
@@ -323,7 +324,7 @@ def _append_knowledge_graph_store(workspace: Path, graph: dict[str, object]) -> 
 
     This is the persistent graph layer consumed by Graph Skill.
     """
-    graph_dir = workspace / ".repobrain" / "graph"
+    graph_dir = knowledge_root(workspace) / "graph"
     graph_dir.mkdir(parents=True, exist_ok=True)
 
     nodes_file = graph_dir / "nodes.jsonl"

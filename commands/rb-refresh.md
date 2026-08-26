@@ -19,9 +19,16 @@ rb-refresh --workspace "$PWD"
 rb-refresh --workspace "$PWD"
 ```
 
-If $ARGUMENTS contains `quick`, add `--quick`. If $ARGUMENTS contains `failed-only`, add `--failed-only`.
+If $ARGUMENTS contains `quick`, add `--quick`. Quick mode compares only committed
+changes, requires a clean worktree, and lets RepoBrain's ImpactPlanner plus an
+independent Verifier update only affected Agent groups. It never falls back to
+a full refresh. If $ARGUMENTS contains `failed-only`, add `--failed-only` to
+resume the failed/pending groups for the same target commit.
 
-如果 $ARGUMENTS 包含 `quick`，追加 `--quick`。如果 $ARGUMENTS 包含 `failed-only`，追加 `--failed-only`。
+如果 $ARGUMENTS 包含 `quick`，追加 `--quick`。quick 只比较已提交变更，要求工作区
+干净，由 RepoBrain ImpactPlanner 与独立 Verifier 只更新受影响 Agent 分组，且绝不
+自动降级为全量刷新。如果 $ARGUMENTS 包含 `failed-only`，追加 `--failed-only`，
+续跑同一目标提交中失败或待处理的分组。
 
 If `rb-refresh` is not found, tell the user the engine CLI is not installed and suggest:
 

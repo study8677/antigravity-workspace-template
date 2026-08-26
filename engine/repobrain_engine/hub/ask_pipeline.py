@@ -13,6 +13,7 @@ import re
 import subprocess
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from repobrain_engine.hub._constants import (
     AGENT_MD_FALLBACK_MARKER,
@@ -28,7 +29,7 @@ from repobrain_engine.hub.contracts import (
     VerificationResult,
     WorkerEvidence,
 )
-from typing import TYPE_CHECKING
+from repobrain_engine.hub.storage import control_root, knowledge_root, read_current_pointer
 
 if TYPE_CHECKING:
     from agents import Agent
@@ -230,17 +231,11 @@ async def ask_pipeline(workspace: Path, question: str) -> str:
     return _prepend_workspace_health_notices(workspace, answer)
 
 
-#: Guard against re-entrancy: refresh_pipeline may itself trigger code paths
-#: that reach ask_pipeline. We never want an auto-refresh to recurse.
-_AUTO_REFRESH_IN_PROGRESS = False
-
-
 def _should_auto_refresh(workspace: Path, settings) -> str | None:
-    """Decide whether rb-ask should refresh itself before answering.
+    """Return a manual-refresh notice reason for ``rb-ask``.
 
-    Lets the CLI keep its own knowledge base current instead of relying on an
-    agent to notice staleness and run ``rb-refresh`` by hand. Any tool that
-    calls ``rb-ask`` then inherits auto-refresh for free.
+    ``RB_ASK_AUTO_REFRESH`` is retained as a reminder toggle for backward
+    compatibility.  Ask never mutates knowledge; refresh is explicitly manual.
 
     Args:
         workspace: Project root directory.
@@ -257,56 +252,29 @@ def _should_auto_refresh(workspace: Path, settings) -> str | None:
     if not _structured_artifacts_available(workspace):
         return "no knowledge base found"
 
-    if mode == "first-only":
-        return None
-
-    # mode == "stale" (or any other truthy value): also refresh on drift.
+    # Any committed drift is worth surfacing.  The old lag threshold no longer
+    # gates execution because ask never executes refresh itself.
     lag = _get_refresh_commit_lag(workspace)
-    threshold = int(getattr(settings, "RB_ASK_AUTO_REFRESH_LAG", 20))
-    if lag is not None and lag > threshold:
+    if lag is not None and lag > 0:
         return f"knowledge base is {lag} commits behind HEAD"
     return None
 
 
 async def _maybe_auto_refresh(workspace: Path, settings) -> None:
-    """Run ``refresh_pipeline`` in-process when the gate says the KB is stale.
-
-    Best-effort: a failed auto-refresh never blocks the answer — rb-ask then
-    proceeds against whatever artifacts exist (possibly none), exactly as
-    before this gate was added.
+    """Emit a reminder without ever mutating knowledge during ask.
 
     Args:
         workspace: Project root directory.
         settings: Loaded application settings.
     """
-    global _AUTO_REFRESH_IN_PROGRESS
-    if _AUTO_REFRESH_IN_PROGRESS:
-        return
-
     reason = _should_auto_refresh(workspace, settings)
     if reason is None:
         return
-
-    from repobrain_engine.hub.refresh_pipeline import refresh_pipeline
-
     print(
-        f"[auto-refresh] {reason}; building knowledge base "
-        "(set RB_ASK_AUTO_REFRESH=off to disable)...",
+        f"[refresh-needed] {reason}; run `rb-refresh --quick` manually. "
+        "RB_ASK_AUTO_REFRESH is reminder-only and no longer runs refresh.",
         file=sys.stderr,
     )
-    _AUTO_REFRESH_IN_PROGRESS = True
-    try:
-        # quick=True keeps the pre-answer refresh light; a full rebuild is
-        # still available via an explicit `rb-refresh`.
-        await refresh_pipeline(workspace, quick=True)
-    except Exception as exc:  # noqa: BLE001 - never let refresh block the answer
-        print(
-            f"[auto-refresh] skipped ({exc.__class__.__name__}: {exc}); "
-            "answering with existing knowledge.",
-            file=sys.stderr,
-        )
-    finally:
-        _AUTO_REFRESH_IN_PROGRESS = False
 
 
 async def _ask_pipeline_once(workspace: Path, question: str) -> str:
@@ -371,7 +339,7 @@ async def _ask_with_host_runner(workspace: Path, question: str, settings) -> str
 
 def _build_host_runner_agent_context(workspace: Path, question: str) -> str:
     """Build compact map.md/agent.md context for local host runners."""
-    rb_dir = workspace / ".repobrain"
+    rb_dir = knowledge_root(workspace)
     agents_dir = rb_dir / "agents"
     parts: list[str] = []
 
@@ -550,7 +518,7 @@ def _structured_artifacts_available(workspace: Path) -> bool:
     Returns:
         True when routing and knowledge artifacts exist.
     """
-    rb_dir = workspace / ".repobrain"
+    rb_dir = knowledge_root(workspace)
 
     # New format: map.md + agents/ directory
     agents_dir = rb_dir / "agents"
@@ -602,6 +570,13 @@ def _build_workspace_health_notices(workspace: Path) -> list[str]:
 
 def _get_refresh_commit_lag(workspace: Path) -> int | None:
     """Return commits between last refresh SHA and HEAD, or None on failure."""
+    pointer = read_current_pointer(workspace)
+    if pointer is not None:
+        last_sha = str(pointer.get("head_sha", "")).strip()
+        if not last_sha:
+            return None
+        return _count_commit_lag(workspace, last_sha)
+
     sha_path = workspace / ".repobrain" / ".last_refresh_sha"
     try:
         last_sha = sha_path.read_text(encoding="utf-8").strip()
@@ -610,6 +585,11 @@ def _get_refresh_commit_lag(workspace: Path) -> int | None:
     if not last_sha:
         return None
 
+    return _count_commit_lag(workspace, last_sha)
+
+
+def _count_commit_lag(workspace: Path, last_sha: str) -> int | None:
+    """Count commits between ``last_sha`` and HEAD."""
     try:
         result = subprocess.run(
             ["git", "rev-list", "--count", f"{last_sha}..HEAD"],
@@ -630,7 +610,7 @@ def _get_refresh_commit_lag(workspace: Path) -> int | None:
 
 def _load_degraded_status_modules(workspace: Path) -> list[str]:
     """Return modules marked partial/failed in status.json, if readable."""
-    status_path = workspace / ".repobrain" / "status.json"
+    status_path = knowledge_root(workspace) / "status.json"
     try:
         payload = json.loads(status_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError, TypeError):
@@ -664,7 +644,7 @@ async def _ask_with_structured_facts(workspace: Path, question: str) -> str | No
     Returns:
         Answer string, or ``None`` if the agent.md path cannot answer.
     """
-    rb_dir = workspace / ".repobrain"
+    rb_dir = knowledge_root(workspace)
 
     # Check for new agent.md format
     if (rb_dir / "map.md").is_file() and (rb_dir / "agents").is_dir():
@@ -880,7 +860,7 @@ async def _ask_with_agent_md(workspace: Path, question: str) -> str | None:
     except ImportError:
         return None
 
-    rb_dir = workspace / ".repobrain"
+    rb_dir = knowledge_root(workspace)
 
     # Build code-exploration tools once so the AnswerAgent / Reader agents
     # below can grep, read, and list inside the workspace at answer time
@@ -1211,7 +1191,7 @@ async def _ask_with_legacy_facts(workspace: Path, question: str) -> str | None:
     Returns:
         Structured answer string, or ``None`` to fall back to swarm.
     """
-    rb_dir = workspace / ".repobrain"
+    rb_dir = knowledge_root(workspace)
     modules_dir = rb_dir / "modules"
     if not (
         (rb_dir / "module_registry.json").is_file()
@@ -1280,7 +1260,7 @@ def _load_registry_entries(workspace: Path) -> list[ModuleRegistryEntry]:
     Returns:
         Parsed registry entries.
     """
-    registry_path = workspace / ".repobrain" / "module_registry.json"
+    registry_path = knowledge_root(workspace) / "module_registry.json"
     payload = json.loads(registry_path.read_text(encoding="utf-8"))
     return [ModuleRegistryEntry.model_validate(item) for item in payload]
 
@@ -1294,7 +1274,7 @@ def _load_refresh_status(workspace: Path) -> RefreshStatus:
     Returns:
         Parsed refresh status document.
     """
-    status_path = workspace / ".repobrain" / "status.json"
+    status_path = knowledge_root(workspace) / "status.json"
     return RefreshStatus.model_validate_json(status_path.read_text(encoding="utf-8"))
 
 
@@ -1311,7 +1291,7 @@ def _load_module_facts(
     Returns:
         Parsed facts document, or ``None`` when missing or invalid.
     """
-    facts_path = workspace / ".repobrain" / "modules" / f"{module}.facts.json"
+    facts_path = knowledge_root(workspace) / "modules" / f"{module}.facts.json"
     if not facts_path.is_file():
         return None
     try:
@@ -1701,34 +1681,34 @@ def _build_ask_context(workspace: Path, question: str = "") -> str:
     # Sources ordered by general usefulness (structure > conventions > graph > docs > data > media)
     prioritized_sources = [
         (
-            workspace / ".repobrain" / "structure.md",
+            knowledge_root(workspace) / "structure.md",
             ".repobrain/structure.md",
         ),
         (
-            workspace / ".repobrain" / "conventions.md",
+            knowledge_root(workspace) / "conventions.md",
             ".repobrain/conventions.md",
         ),
         (
-            workspace / ".repobrain" / "knowledge_graph.md",
+            knowledge_root(workspace) / "knowledge_graph.md",
             ".repobrain/knowledge_graph.md",
         ),
-        (workspace / ".repobrain" / "rules.md", ".repobrain/rules.md"),
+        (knowledge_root(workspace) / "rules.md", ".repobrain/rules.md"),
         (
-            workspace / ".repobrain" / "decisions" / "log.md",
+            control_root(workspace) / "decisions" / "log.md",
             ".repobrain/decisions/log.md",
         ),
         (workspace / "CONTEXT.md", "CONTEXT.md"),
         (workspace / "AGENTS.md", "AGENTS.md"),
         (
-            workspace / ".repobrain" / "document_index.md",
+            knowledge_root(workspace) / "document_index.md",
             ".repobrain/document_index.md",
         ),
         (
-            workspace / ".repobrain" / "data_overview.md",
+            knowledge_root(workspace) / "data_overview.md",
             ".repobrain/data_overview.md",
         ),
         (
-            workspace / ".repobrain" / "media_manifest.md",
+            knowledge_root(workspace) / "media_manifest.md",
             ".repobrain/media_manifest.md",
         ),
     ]
@@ -1769,7 +1749,7 @@ def _build_ask_context(workspace: Path, question: str = "") -> str:
                 break
             context_parts.append(rendered)
 
-    memory_dir = workspace / ".repobrain" / "memory"
+    memory_dir = control_root(workspace) / "memory"
     if memory_dir.exists():
         for memory_file in sorted(memory_dir.glob("*.md")):
             rendered = _read_context_file(
@@ -2036,7 +2016,7 @@ def _build_retrieval_semantic_answer(workspace: Path, question: str) -> str | No
         return None
 
     lines: list[str] = []
-    scan_report = workspace / ".repobrain" / "scan_report.json"
+    scan_report = knowledge_root(workspace) / "scan_report.json"
     if scan_report.is_file():
         try:
             payload = json.loads(scan_report.read_text(encoding="utf-8"))
@@ -2101,7 +2081,7 @@ def _build_retrieval_semantic_answer(workspace: Path, question: str) -> str | No
 
 def _build_timeout_fallback_answer(workspace: Path, question: str) -> str:
     """Return relevant knowledge snippets when ask agent times out."""
-    rb_dir = workspace / ".repobrain"
+    rb_dir = knowledge_root(workspace)
     q_lower = question.lower()
     keywords = [w for w in re.split(r"\W+", q_lower) if len(w) > 2]
 

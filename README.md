@@ -233,7 +233,7 @@ Same four slash commands ship to both **Claude Code** and **Codex CLI**. Claude 
 | Claude Code | Codex CLI | Purpose |
 |---|---|---|
 | `/repobrain:rb-setup` | `/rb-setup` | First-time setup — pick LLM provider, write `.env` |
-| `/repobrain:rb-refresh [quick]` | `/rb-refresh [quick]` | Build / incrementally refresh the project knowledge base |
+| `/repobrain:rb-refresh [quick]` | `/rb-refresh [quick]` | Build a full baseline or manually update only affected Agent groups |
 | `/repobrain:rb-ask <question>` | `/rb-ask <question>` | Routed Q&A on the current codebase |
 | `/repobrain:rb-init <name>` | `/rb-init <name>` | Scaffold a new multi-agent repo from this template |
 
@@ -249,7 +249,13 @@ Run this **once per project**, right after installing the plugin. Interactive pi
 
 ### `rb-refresh` — build / refresh the knowledge base
 
-Deploys the multi-agent cluster to read your code: each module gets its own Agent that produces a knowledge doc under `.repobrain/agents/*.md`, plus a `map.md` routing index. Run after install, after significant code changes, or when `rb-ask` returns stale answers. The first refresh auto-creates `.repobrain/` — no separate init step needed. Pass `quick` for an incremental update, `failed-only` to rerun only previously failed modules.
+Deploys the multi-agent cluster and creates an atomic generation baseline. The
+first run must be a full refresh. Later, `quick` compares committed changes from
+the active generation to HEAD, requires a clean worktree, and lets RepoBrain's
+ImpactPlanner plus an independent Verifier execute only affected Agent groups.
+It never falls back to a full refresh. Use `failed-only` to resume failed or
+pending groups for the same target commit. `rb-ask` only warns about new commits;
+it never refreshes knowledge automatically.
 
 Time: a few minutes for small repos, longer for large ones. Requires `rb-setup` to have completed. Works with either backend: an API-key/OpenAI-compatible provider runs the full LLM refresh, while a **local host-runner** (Codex / Trae / Claude / …) runs the tool-free stages (module docs, `map.md`) through your logged-in CLI and automatically degrades the tool/handoff stages (conventions, git insights) to deterministic output — no API key needed. Add `RB_REFRESH_SCAN_ONLY=1` only if you want a fast structure-only index with no LLM narration at all.
 

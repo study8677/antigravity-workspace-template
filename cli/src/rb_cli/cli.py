@@ -293,9 +293,26 @@ def _git_commit_lag(workspace: Path) -> str:
     return f"{int(result.stdout.strip() or '0')} commit(s) behind HEAD"
 
 
+def _active_knowledge_root(workspace: Path) -> Path:
+    """Resolve a generation pointer without importing the optional engine."""
+    control = workspace / ".repobrain"
+    pointer_path = control / "current.json"
+    try:
+        pointer = json.loads(pointer_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError, TypeError):
+        return control
+    if not isinstance(pointer, dict):
+        return control
+    generation = str(pointer.get("generation", "")).strip()
+    if not generation or Path(generation).name != generation:
+        return control
+    candidate = control / "generations" / generation
+    return candidate if candidate.is_dir() else control
+
+
 def _status_health(workspace: Path) -> str:
     """Return partial/failed module and group counts from status.json."""
-    status_path = workspace / ".repobrain" / "status.json"
+    status_path = _active_knowledge_root(workspace) / "status.json"
     try:
         payload = json.loads(status_path.read_text(encoding="utf-8"))
     except FileNotFoundError:
@@ -309,7 +326,7 @@ def _status_health(workspace: Path) -> str:
         values = payload.get(name, {})
         if not isinstance(values, dict):
             return 0
-        return sum(1 for state in values.values() if state in {"partial", "failed"})
+        return sum(1 for state in values.values() if state in {"partial", "failed", "unresolved"})
 
     return (
         f"{_count_degraded('modules')} partial/failed module(s), "
@@ -319,13 +336,14 @@ def _status_health(workspace: Path) -> str:
 
 def _knowledge_health(workspace: Path) -> tuple[str, str]:
     """Check .repobrain artifact existence and health summaries."""
-    rb_dir = workspace / ".repobrain"
+    control_dir = workspace / ".repobrain"
+    rb_dir = _active_knowledge_root(workspace)
     map_path = rb_dir / "map.md"
     agents_dir = rb_dir / "agents"
     missing = [
         label
         for label, exists in (
-            (".repobrain/", rb_dir.is_dir()),
+            (".repobrain/", control_dir.is_dir()),
             ("map.md", map_path.is_file()),
             ("agents/", agents_dir.is_dir()),
         )
@@ -469,8 +487,16 @@ def ask_cmd(
 @app.command("refresh")
 def refresh_cmd(
     workspace: str = typer.Option(".", "--workspace", "-w", help="Project directory."),
-    quick: bool = typer.Option(False, "--quick", help="Only scan changed files."),
-    failed_only: bool = typer.Option(False, "--failed-only", help="Only re-run modules that failed in the previous refresh."),
+    quick: bool = typer.Option(
+        False,
+        "--quick",
+        help="Judge committed diff impact and update only affected Agent groups.",
+    ),
+    failed_only: bool = typer.Option(
+        False,
+        "--failed-only",
+        help="Resume failed/pending groups for the current target commit.",
+    ),
 ) -> None:
     """Refresh project context in .repobrain/ (requires LLM)."""
     workspace_path = Path(workspace).resolve()

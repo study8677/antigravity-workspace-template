@@ -248,8 +248,16 @@ def refresh_main(argv: Sequence[str] | None = None) -> None:
         description="Refresh the RepoBrain knowledge base",
     )
     parser.add_argument("--workspace", default=".", help="Project root (default: cwd)")
-    parser.add_argument("--quick", action="store_true", help="Only scan changed files")
-    parser.add_argument("--failed-only", action="store_true", help="Only re-run modules that failed in the previous refresh")
+    parser.add_argument(
+        "--quick",
+        action="store_true",
+        help="Judge committed diff impact and update only affected Agent groups",
+    )
+    parser.add_argument(
+        "--failed-only",
+        action="store_true",
+        help="Resume failed/pending groups for the current target commit",
+    )
     args = _parse_args(parser, argv)
 
     workspace = Path(args.workspace).resolve()

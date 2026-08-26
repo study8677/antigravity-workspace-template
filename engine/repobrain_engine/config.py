@@ -98,19 +98,22 @@ class Settings(BaseSettings):
         description="Run refresh without LLM analysis and write scan artifacts only.",
     )
 
-    # Auto-refresh gate for rb-ask (let the CLI refresh itself instead of
-    # relying on an agent to notice and run rb-refresh manually).
+    # Backward-compatible reminder toggle for rb-ask. Ask is read-only and
+    # never invokes refresh; committed drift is handled manually via --quick.
     RB_ASK_AUTO_REFRESH: str = Field(
         default="stale",
-        description="When rb-ask should build/rebuild the knowledge base on its "
-        "own: 'off' (never), 'first-only' (only when .repobrain is missing), or "
-        "'stale' (missing OR more than RB_ASK_AUTO_REFRESH_LAG commits behind "
-        "HEAD). Default 'stale' covers both first run and drift.",
+        description="Deprecated auto-refresh setting, now used only as a "
+        "manual-refresh reminder toggle. 'off' disables reminders.",
     )
     RB_ASK_AUTO_REFRESH_LAG: int = Field(
         default=20,
-        description="Commit lag past which 'stale' mode triggers an auto-refresh "
-        "before answering. Ignored when RB_ASK_AUTO_REFRESH is 'off'/'first-only'.",
+        description="Deprecated compatibility field. Any positive committed "
+        "lag is now reported; ask never executes refresh.",
+    )
+    RB_IMPACT_MAX_ROUNDS: int = Field(
+        default=3,
+        ge=1,
+        description="Maximum independent Planner/Verifier rounds for quick refresh.",
     )
 
     # Memory Configuration

@@ -278,12 +278,11 @@ def serve(workspace: Path) -> None:
         """Rebuild the project knowledge base (.repobrain/conventions.md and structure.md).
 
         Run this after significant code changes to keep the knowledge base
-        up to date. Use quick=True to only scan files changed since the
-        last refresh.
+        up to date. Use quick=True to let RepoBrain judge and update only
+        Agent groups affected by committed changes since the active generation.
 
         Args:
-            quick: If True, only scan files changed since the last refresh.
-                   Faster but may miss some changes.
+            quick: If True, run the bounded ImpactPlanner/ImpactVerifier loop.
 
         Returns:
             Confirmation message with updated file paths.
@@ -293,8 +292,15 @@ def serve(workspace: Path) -> None:
         from repobrain_engine.hub.pipeline import refresh_pipeline
 
         try:
-            await refresh_pipeline(_active_workspace, quick=quick)
-            rb_dir = _active_workspace / ".repobrain"
+            status = await refresh_pipeline(_active_workspace, quick=quick)
+            if status.overall_status == "unresolved":
+                return (
+                    "Knowledge base was not changed: incremental impact remains unresolved.\n"
+                    f"Plan: {status.impact_plan_path or '(not written)'}"
+                )
+            from repobrain_engine.hub.storage import knowledge_root
+
+            rb_dir = knowledge_root(_active_workspace)
             return (
                 f"Knowledge base updated:\n"
                 f"  {rb_dir / 'conventions.md'}\n"

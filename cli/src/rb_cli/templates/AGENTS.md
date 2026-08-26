@@ -42,16 +42,20 @@ out.) Both paths run the same engine, so they work with an API-key provider or,
 with no API key, a local host runner (`RB_HOST_RUNNER` in `.env`) that drives a
 CLI you are already logged into (Codex / Trae / Claude / …).
 
-You normally do **not** need to run `rb-refresh` yourself: `rb-ask` keeps its
-own knowledge base current. It builds the base automatically on first use (when
-`.repobrain/` is missing) and rebuilds it when it drifts too far behind HEAD.
-This is governed by `RB_ASK_AUTO_REFRESH` in `.env` (`stale` = first-run +
-drift, the default; `first-only`; or `off`).
-
-Run this explicitly only to force a full rebuild:
+`rb-ask` is read-only. It warns when committed code is newer than the active
+knowledge generation but never refreshes automatically. Build the first
+generation explicitly with:
 
 ```bash
 rb-refresh --workspace .
+```
+
+After later commits, run the committed-diff impact loop manually. It requires a
+clean worktree and updates only Agent groups that RepoBrain's planner and
+verifier prove are affected:
+
+```bash
+rb-refresh --workspace . --quick
 ```
 
 Direct file reads, `grep`, or `rg` are allowed **only** for:

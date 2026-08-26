@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 
 from repobrain_engine.hub._utils import is_safe_path
+from repobrain_engine.hub.storage import knowledge_root
 
 
 def _workspace_root() -> Path:
@@ -54,8 +55,13 @@ def refresh_filesystem(workspace: str = ".", quick: bool = False) -> str:
     from repobrain_engine.hub.pipeline import refresh_pipeline
 
     ws = _resolve_workspace(workspace)
-    asyncio.run(refresh_pipeline(ws, quick=quick))
-    rb_dir = ws / ".repobrain"
+    status = asyncio.run(refresh_pipeline(ws, quick=quick))
+    if getattr(status, "overall_status", None) == "unresolved":
+        return (
+            "Knowledge-layer refresh unresolved; active generation was preserved.\n"
+            f"Plan: {status.impact_plan_path or '(not written)'}"
+        )
+    rb_dir = knowledge_root(ws)
     return (
         "Knowledge-layer refresh completed:\n"
         f"- {rb_dir / 'knowledge_graph.json'}\n"
