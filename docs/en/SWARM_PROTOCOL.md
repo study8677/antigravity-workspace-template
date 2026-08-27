@@ -1,239 +1,299 @@
-# 🔥 Multi-Agent Swarm Protocol
+# 🔥 Multi-Agent Collaboration Model
 
-## 🪐 Architecture: Router-Worker Pattern
+## 🪐 Architecture Overview
 
-The RepoBrain Workspace includes a sophisticated multi-agent swarm system based on the Router-Worker pattern. This allows complex tasks to be decomposed and handled by specialist agents working in coordination.
+RepoBrain uses two specialized Agent Swarms to power its core functionality:
+
+1. **Refresh Swarm** — Scans the project and generates knowledge artifacts
+2. **Ask Swarm** — Answers codebase questions using the generated knowledge base
+
+These swarms are defined in `engine/repobrain_engine/hub/agents.py` and driven by `refresh_pipeline.py` and `ask_pipeline.py`.
+
+## 🔄 Refresh Swarm: Three-Stage Analysis Chain
+
+When you run `rb-refresh`, the Refresh Swarm analyzes your codebase and generates a project conventions document.
+
+### Architecture: Three-Agent Handoff Chain
+
+```mermaid
+graph LR
+    Scan[Scan Report] --> SA[ScanAnalyst]
+    SA --> AR[ArchitectureReviewer]
+    AR --> CW[ConventionWriter]
+    CW --> Doc[conventions.md]
+```
+
+### The Three Agent Roles
+
+#### 🔍 ScanAnalyst
+**Responsibility:** Code analysis specialist focusing on language and framework detection
+
+**Analyzes:**
+- Programming languages and their distribution (primary vs secondary)
+- Detected frameworks and libraries (web, data, ML, etc.)
+- Code patterns and style observations (naming, structure, idioms)
+- Dependency management approach
+
+Hands off to ArchitectureReviewer when complete.
+
+#### 🏗️ ArchitectureReviewer
+**Responsibility:** Software architecture reviewer
+
+**Analyzes:**
+- Project directory structure and organization patterns
+- Testing approach, framework, and coverage indicators
+- CI/CD pipeline setup and automation
+- Docker/container configuration
+- Build system and packaging approach
+- Configuration management patterns
+
+Builds on the previous agent's analysis and adds structural findings, then hands off to ConventionWriter.
+
+#### ✍️ ConventionWriter
+**Responsibility:** Technical documentation writer specialist
+
+**Produces:**
+Using ALL analysis from the previous agents, produces a concise conventions document (Markdown format) covering:
+- Primary language(s) and framework(s)
+- Project structure overview
+- Code style observations
+- Testing approach
+- CI/CD setup
+
+Keeps it under 300 words, outputs ONLY Markdown content.
+
+### Implementation Location
+
+- **Code:** `build_refresh_swarm()` in `engine/repobrain_engine/hub/agents.py`
+- **Pipeline:** `engine/repobrain_engine/hub/refresh_pipeline.py`
+- **Storage:** Generated knowledge saved to `.repobrain/` directory (in target project, not this repo)
+
+### Host-Runner Mode
+
+When no API key is configured (`RB_HOST_RUNNER` set to `codex` or `generic`), Refresh uses a single-turn, tool-free Convention Agent (`build_single_turn_convention_agent()`) that collapses the three-stage chain into one generation.
+
+## 💬 Ask Swarm: Dynamic Module Router
+
+When you run `rb-ask "question"`, the Ask Swarm routes your question to the relevant module's agent and returns an answer with file paths and line numbers.
+
+### Architecture: Router-Worker Pattern
 
 ```mermaid
 graph TD
-    User[User Task] --> Router[🧭 Router Agent]
-    Router --> Coder[💻 Coder Agent]
-    Router --> Reviewer[🔍 Reviewer Agent]
-    Router --> Researcher[📚 Researcher Agent]
-    Coder --> Router
-    Reviewer --> Router
-    Researcher --> Router
-    Router --> Result[📊 Synthesized Result]
+    User[User Question] --> Router[Router Agent]
+    Router --> MA1[ModuleAgent: auth]
+    Router --> MA2[ModuleAgent: api]
+    Router --> MA3[ModuleAgent: database]
+    Router --> Git[GitAgent: git history]
+    MA1 --> Router
+    MA2 --> Router
+    MA3 --> Router
+    Git --> Router
+    Router --> Answer[Final Answer + Citations]
 ```
 
-## 🧠 Specialist Agents
+### Agent Roles
 
-### 🧭 Router Agent
-**Role**: Task analyzer, strategist, and conductor
+#### 🧭 Router Agent
+**Responsibility:** Question routing and answer synthesis
 
-The Router analyzes incoming tasks, determines the best decomposition strategy, delegates subtasks to specialists, and synthesizes final results.
+**Workflow:**
+1. Reads the user's question
+2. Identifies relevant module(s) based on project structure map
+3. Hands off to the appropriate ModuleAgent
+4. For git-related questions (recent changes, commit history), hands off to GitAgent
+5. For cross-module questions, hands off to one module first; that module can hand off to others as needed
+6. Synthesizes findings from agents into a final answer
 
-**Capabilities:**
-- 🎯 Complex task analysis
-- 📋 Strategic planning
-- 🔀 Work distribution
-- 🧩 Result synthesis
+**Answer Requirements:**
+- Lead with a direct answer to the question
+- **Cite specific file paths, line numbers, and function names**
+- Include commit history when it explains "why"
+- Be concise (under 200 words unless the question demands more)
 
-### 💻 Coder Agent
-**Role**: Implementation specialist
+#### 📦 ModuleAgent (Dynamically Created)
+**Responsibility:** Deep knowledge of a specific module
 
-Writes clean, well-documented, production-ready code following Google style guide conventions.
+Each module gets its own agent with:
+- Module's structured facts (JSON claims + source evidence)
+- Tools to explore code (read_file, search_code, etc.)
+- Ability to hand off to other ModuleAgents for cross-module information
 
-**Specialties:**
-- 🐍 Python development
-- 🎨 Clean code architecture
-- 📝 Comprehensive docstrings
-- 🧪 Test coverage
+ModuleAgents are created dynamically based on the project scan (one agent per detected module).
 
-### 🔍 Reviewer Agent
-**Role**: Quality assurance expert
+#### 📜 GitAgent
+**Responsibility:** Git history and change analysis
 
-Reviews implementations for correctness, security, performance, and best practices.
+Handles questions about:
+- Recent commits and changes
+- Who changed what
+- Change history and rationale
+- Blame information
 
-**Specialties:**
-- ✅ Code quality assessment
-- 🔒 Security analysis
-- ⚡ Performance optimization
-- 📋 Best practice verification
+### Implementation Location
 
-### 📚 Researcher Agent
-**Role**: Information gatherer and investigator
+- **Code:** Router and ModuleAgent building logic in `engine/repobrain_engine/hub/agents.py`
+- **Pipeline:** `engine/repobrain_engine/hub/ask_pipeline.py`
+- **Knowledge:** Reads from generation directory pointed to by `.repobrain/current.json`
 
-Researches solutions, gathers context, and provides foundational knowledge for complex tasks.
+### Fallback Strategy
 
-**Specialties:**
-- 🔎 Problem research
-- 📚 Information synthesis
-- 🧠 Context gathering
-- 💡 Insight generation
+The ask pipeline implements a three-tier fallback mechanism:
 
-## 🚀 Using the Swarm
+1. **`_ask_with_structured_facts`** — Uses structured facts (JSON claims + source verification)
+2. **`_ask_with_agent_md`** — Falls back to agent.md files (plain text knowledge)
+3. **`_ask_with_legacy_swarm`** — Final fallback (if both fail)
 
-### Run Interactive Demo
+This ensures ask functionality remains available even if knowledge base is partially generated or uses older formats.
+
+## 🔧 Configuration & Extension
+
+### Using Different LLM Backends
+
+1. **API-based (standard):**
+   ```bash
+   rb-setup  # Choose OpenAI, DeepSeek, Groq, etc.
+   ```
+
+2. **Host-runner (no API key):**
+   ```bash
+   export RB_HOST_RUNNER=codex  # or generic
+   # Uses logged-in IDE CLI, no API key needed
+   ```
+
+3. **Custom OpenAI-compatible endpoint:**
+   ```bash
+   export OPENAI_BASE_URL=https://your-endpoint.com/v1
+   export OPENAI_API_KEY=your-key
+   export OPENAI_MODEL=your-model
+   ```
+
+### Incremental Refresh (`--quick`)
+
+For clean worktrees with committed changes:
 
 ```bash
-python -m repobrain_engine.swarm_demo
+rb-refresh --quick
 ```
 
-This launches an interactive prompt where you can assign tasks to the swarm and watch specialists collaborate.
+This triggers incremental refresh:
+- **ImpactPlanner** analyzes git diff to determine affected modules
+- **ImpactVerifier** verifies impact analysis
+- Only affected agent-groups are refreshed
+- Significantly speeds up iteration on large codebases
 
-### Example Interaction
+Implementation: `engine/repobrain_engine/hub/incremental.py`
 
-```
-🧭 [Router] What task would you like me to help with?
-> Build a calculator that supports basic math operations and review it for security
+## 📊 Workflow Examples
 
-🧭 [Router] Analyzing task...
-📤 [Router → Coder] Build a calculator with +, -, *, / operations
-💻 [Coder] Creating calculator implementation...
-📝 [Coder] Generating comprehensive tests...
-✅ [Coder] Implementation complete!
+### Example 1: Initialize New Project
 
-📤 [Router → Reviewer] Review calculator for security and best practices
-🔍 [Reviewer] Analyzing code structure...
-🔍 [Reviewer] Security assessment: No vulnerabilities found ✅
-🔍 [Reviewer] Performance assessment: Optimal ✅
-✅ [Reviewer] Review complete!
+```bash
+# 1. Set up backend
+rb-setup
 
-🎉 [Router] Task completed successfully!
-📊 Final Summary:
-   - Implementation: calculator.py ✅
-   - Tests: calculator_test.py ✅
-   - Review: All checks passed ✅
-```
+# 2. Scan project and build knowledge base
+rb-refresh
 
-### Programmatic Usage
+# 3. Verify knowledge base
+rb report  # Shows detected modules, languages, etc.
 
-```python
-from repobrain_engine.swarm import SwarmOrchestrator
-
-swarm = SwarmOrchestrator()
-result = swarm.execute("Build a file compression utility with error handling")
-print(result)  # final synthesized string
+# 4. Start asking questions
+rb-ask "How does authentication work?"
 ```
 
-## 🔧 Configuration
+### Example 2: Incremental Updates
 
-Current implementation uses a built-in worker map in `repobrain_engine/swarm.py`.
-There is no external `swarm_config.json` loader yet.
+```bash
+# Make some changes and commit
+git add .
+git commit -m "Update auth logic"
 
-### Custom Agents
+# Quick incremental refresh (only affected modules)
+rb-refresh --quick
 
-Add custom specialist agents by extending `BaseAgent`:
-
-```python
-# repobrain_engine/agents/custom_agent.py
-from repobrain_engine.agents.base_agent import BaseAgent
-
-class DataAnalystAgent(BaseAgent):
-    """Specialist agent for data analysis tasks."""
-    
-    def __init__(self, name="DataAnalyst"):
-        super().__init__(name=name)
-        self.specialization = "data analysis"
-    
-    def execute(self, task: str) -> str:
-        """Execute data analysis task."""
-        # Implementation here
-        return result
+# Verify updates
+rb-ask "What changed in the auth module?"
 ```
 
-Register in `swarm.py`:
+### Example 3: Debugging Usage
 
-```python
-from repobrain_engine.agents.custom_agent import DataAnalystAgent
+```bash
+# Refresh with debug logging
+RB_LOG_LEVEL=DEBUG rb-refresh
 
-agents = {
-    "coder": CoderAgent(),
-    "reviewer": ReviewerAgent(),
-    "researcher": ResearcherAgent(),
-    "data_analyst": DataAnalystAgent(),  # Add custom agent
-}
+# Ask with verbose output
+RB_LOG_LEVEL=DEBUG rb-ask "Where is the database connection?"
 ```
-
-## 📊 Monitoring & Logging
-
-### Runtime Output
-
-`SwarmOrchestrator.execute(..., verbose=True)` prints delegation and progress logs
-to stdout. You can also inspect in-memory message history:
-
-```python
-from repobrain_engine.swarm import SwarmOrchestrator
-
-swarm = SwarmOrchestrator()
-swarm.execute("Build and review a calculator", verbose=False)
-messages = swarm.get_message_log()
-print(messages)
-```
-
-The current implementation does not automatically write swarm logs/artifacts to disk.
-
-## ⚡ Performance Tips
-
-### Optimize Execution
-- 🎯 Keep task descriptions clear and focused
-- 📦 Pre-load context for better agent understanding
-- ⏱️ Keep subtasks concrete so router delegation is predictable
-
-### Resource Management
-- 🚫 Disable or remove unused workers directly in `repobrain_engine/swarm.py`
-- 💾 Implement result caching
-- 🧹 Clean old artifacts periodically
 
 ## 🐛 Troubleshooting
 
-### Agents won't connect
+### Agent Initialization Fails
+
 ```bash
-# Check if swarm can initialize
-python -c "from repobrain_engine.swarm import SwarmOrchestrator; SwarmOrchestrator(); print('ok')"
+# Check if Agent SDK is installed
+pip show openai-agents
+
+# Verify LLM configuration
+cat .env | grep OPENAI
 ```
 
-### Task execution hangs
+### Incomplete Knowledge Base
+
 ```bash
-# Run with verbose=False to reduce console noise and inspect message bus
-python -c "from repobrain_engine.swarm import SwarmOrchestrator; s=SwarmOrchestrator(); s.execute('test', verbose=False); print(s.get_message_log())"
+# Check refresh status
+rb report
+
+# Force full refresh (non-incremental)
+rb-refresh  # without --quick
+
+# Check generation logs
+ls -la .repobrain/
+cat .repobrain/current.json
 ```
 
-### Low quality results
-- 📚 Provide more context to the swarm
-- 🎯 Be more specific in task descriptions
-- 🔄 Enable reviewer agent for quality checks
+### Ask Returns "Not Found"
 
-## 📚 Examples
+Possible causes:
+1. Knowledge base not generated or stale → Run `rb-refresh`
+2. Module not detected by scanner → Check `rb report` output
+3. Question routed to wrong module → Try more specific question
 
-### Example 1: Web Scraper Development
-```python
-from repobrain_engine.swarm import SwarmOrchestrator
+## 🔗 MCP Integration
 
-swarm = SwarmOrchestrator()
-result = swarm.execute(
-    """
-    Build a web scraper that:
-    1. Fetches news articles from a website
-    2. Extracts headline, author, date
-    3. Stores in JSON format
-    4. Includes error handling
-    """
-)
-```
+RepoBrain exposes its core functionality as MCP tools via `rb-mcp`:
 
-### Example 2: API Server with Testing
-```python
-result = swarm.execute(
-    """
-    Create a Flask REST API with:
-    - GET /users endpoint
-    - POST /users endpoint with validation
-    - Comprehensive unit tests
-    - Security review for vulnerabilities
-    """
-)
-```
+- **`ask_project`** — Answer codebase questions
+- **`refresh_project`** — Refresh knowledge base
 
-## 📞 Advanced Topics
+MCP server implementation: `engine/repobrain_engine/hub/mcp_server.py`
 
-- **Custom Agent Development**: Extend `BaseAgent` for specialized domains
-- **Custom Orchestration**: Extend `SwarmOrchestrator` for different routing/execution policies
-- **Inter-Agent Communication**: Use message passing for complex coordination
-- **Result Verification**: Implement custom verification strategies
+## 🚀 Performance Tips
 
-See [Full Index](README.md) for more resources.
+### Speed Up Refresh
+- Use `--quick` for incremental updates (clean worktree after commit)
+- Exclude unnecessary directories (configure ignore patterns in `.repobrain/config.json`)
+- Use faster models (e.g., GPT-4o-mini or Claude 3.5 Haiku)
+
+### Improve Answer Quality
+- Keep knowledge base up to date (run `rb-refresh` regularly)
+- Ask specific questions (mention file names, features, or modules)
+- Use higher-capability models for complex queries
+
+## 📚 References
+
+### Core Files
+- `engine/repobrain_engine/hub/agents.py` — Agent definitions
+- `engine/repobrain_engine/hub/refresh_pipeline.py` — Refresh workflow
+- `engine/repobrain_engine/hub/ask_pipeline.py` — Ask workflow
+- `engine/repobrain_engine/hub/incremental.py` — Incremental refresh
+- `engine/repobrain_engine/hub/host_runner.py` — Local CLI backend
+- `engine/repobrain_engine/hub/storage.py` — Knowledge storage
+
+### Related Documentation
+- [Project Philosophy](PHILOSOPHY.md) — Product boundaries and support scope
+- [Zero-Config Features](ZERO_CONFIG.md) — Tool and context discovery
+- [Quick Start](QUICK_START.md) — Installation and first steps
 
 ---
 

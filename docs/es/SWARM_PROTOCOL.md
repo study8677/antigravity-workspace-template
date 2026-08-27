@@ -1,125 +1,299 @@
-# 🔥 Protocolo de Swarm Multi-Agente
+# 🔥 Modelo de Colaboración Multi-Agente
 
-## 🪐 Arquitectura: Patrón Router-Worker
+## 🪐 Descripción General de la Arquitectura
 
-El RepoBrain Workspace incluye un sistema de swarm de múltiples agentes sofisticado basado en el patrón Router-Worker. Esto permite descomponer tareas complejas y manejarlas con agentes especialistas trabajando en coordinación.
+RepoBrain utiliza dos Swarms de Agentes especializados para impulsar su funcionalidad central:
+
+1. **Refresh Swarm** — Escanea el proyecto y genera artefactos de conocimiento
+2. **Ask Swarm** — Responde preguntas sobre el codebase usando la base de conocimiento generada
+
+Estos swarms están definidos en `engine/repobrain_engine/hub/agents.py` e impulsados por `refresh_pipeline.py` y `ask_pipeline.py`.
+
+## 🔄 Refresh Swarm: Cadena de Análisis en Tres Etapas
+
+Cuando ejecutas `rb-refresh`, el Refresh Swarm analiza tu codebase y genera un documento de convenciones del proyecto.
+
+### Arquitectura: Cadena de Handoff de Tres Agentes
+
+```mermaid
+graph LR
+    Scan[Reporte de Escaneo] --> SA[ScanAnalyst]
+    SA --> AR[ArchitectureReviewer]
+    AR --> CW[ConventionWriter]
+    CW --> Doc[conventions.md]
+```
+
+### Los Tres Roles de Agentes
+
+#### 🔍 ScanAnalyst
+**Responsabilidad:** Especialista en análisis de código enfocado en detección de lenguajes y frameworks
+
+**Analiza:**
+- Lenguajes de programación y su distribución (primarios vs secundarios)
+- Frameworks y bibliotecas detectados (web, datos, ML, etc.)
+- Observaciones de patrones y estilos de código (nomenclatura, estructura, idiomas)
+- Enfoque de gestión de dependencias
+
+Pasa el control a ArchitectureReviewer al completar.
+
+#### 🏗️ ArchitectureReviewer
+**Responsabilidad:** Revisor de arquitectura de software
+
+**Analiza:**
+- Estructura de directorios del proyecto y patrones de organización
+- Enfoque de pruebas, framework e indicadores de cobertura
+- Configuración de pipeline CI/CD y automatización
+- Configuración de Docker/contenedores
+- Sistema de construcción y enfoque de empaquetado
+- Patrones de gestión de configuración
+
+Se basa en el análisis del agente anterior y añade hallazgos estructurales, luego pasa el control a ConventionWriter.
+
+#### ✍️ ConventionWriter
+**Responsabilidad:** Especialista en redacción de documentación técnica
+
+**Produce:**
+Usando TODO el análisis de los agentes anteriores, produce un documento de convenciones conciso (formato Markdown) que cubre:
+- Lenguaje(s) y framework(s) principales
+- Descripción general de la estructura del proyecto
+- Observaciones de estilo de código
+- Enfoque de pruebas
+- Configuración CI/CD
+
+Lo mantiene bajo 300 palabras, genera SOLO contenido Markdown.
+
+### Ubicación de Implementación
+
+- **Código:** `build_refresh_swarm()` en `engine/repobrain_engine/hub/agents.py`
+- **Pipeline:** `engine/repobrain_engine/hub/refresh_pipeline.py`
+- **Almacenamiento:** Conocimiento generado guardado en directorio `.repobrain/` (en proyecto objetivo, no en este repo)
+
+### Modo Host-Runner
+
+Cuando no hay API key configurada (`RB_HOST_RUNNER` establecido en `codex` o `generic`), Refresh usa un Agente de Convenciones de turno único sin herramientas (`build_single_turn_convention_agent()`) que colapsa la cadena de tres etapas en una sola generación.
+
+## 💬 Ask Swarm: Enrutador de Módulos Dinámico
+
+Cuando ejecutas `rb-ask "pregunta"`, el Ask Swarm enruta tu pregunta al agente del módulo relevante y devuelve una respuesta con rutas de archivo y números de línea.
+
+### Arquitectura: Patrón Router-Worker
 
 ```mermaid
 graph TD
-    User[Tarea del Usuario] --> Router[🧭 Router Agent]
-    Router --> Coder[💻 Coder Agent]
-    Router --> Reviewer[🔍 Reviewer Agent]
-    Router --> Researcher[📚 Researcher Agent]
-    Coder --> Router
-    Reviewer --> Router
-    Researcher --> Router
-    Router --> Result[📊 Resultado Sintetizado]
+    User[Pregunta del Usuario] --> Router[Router Agent]
+    Router --> MA1[ModuleAgent: auth]
+    Router --> MA2[ModuleAgent: api]
+    Router --> MA3[ModuleAgent: database]
+    Router --> Git[GitAgent: historial git]
+    MA1 --> Router
+    MA2 --> Router
+    MA3 --> Router
+    Git --> Router
+    Router --> Answer[Respuesta Final + Citas]
 ```
 
-## 🧠 Agentes Especialistas
+### Roles de Agentes
 
-### 🧭 Agente Router
-**Rol**: Analizador de tareas, estratega y director
+#### 🧭 Router Agent
+**Responsabilidad:** Enrutamiento de preguntas y síntesis de respuestas
 
-El Router analiza tareas entrantes, determina la mejor estrategia de descomposición, delega subtareas a especialistas y sintetiza resultados finales.
+**Flujo de Trabajo:**
+1. Lee la pregunta del usuario
+2. Identifica módulo(s) relevante(s) basado en el mapa de estructura del proyecto
+3. Pasa el control al ModuleAgent apropiado
+4. Para preguntas relacionadas con git (cambios recientes, historial de commits), pasa el control a GitAgent
+5. Para preguntas entre módulos, pasa el control a un módulo primero; ese módulo puede pasar el control a otros según sea necesario
+6. Sintetiza los hallazgos de los agentes en una respuesta final
 
-**Capacidades:**
-- 🎯 Análisis de tareas complejas
-- 📋 Planificación estratégica
-- 🔀 Distribución de trabajo
-- 🧩 Síntesis de resultados
+**Requisitos de Respuesta:**
+- Comenzar con una respuesta directa a la pregunta
+- **Citar rutas de archivo específicas, números de línea y nombres de funciones**
+- Incluir historial de commits cuando explique el "por qué"
+- Ser conciso (bajo 200 palabras a menos que la pregunta demande más)
 
-### 💻 Agente Coder
-**Rol**: Especialista en implementación
+#### 📦 ModuleAgent (Creado Dinámicamente)
+**Responsabilidad:** Conocimiento profundo de un módulo específico
 
-Escribe código limpio, bien documentado y listo para producción siguiendo convenciones de Google style guide.
+Cada módulo obtiene su propio agente con:
+- Facts estructurados del módulo (claims JSON + evidencia de fuente)
+- Herramientas para explorar código (read_file, search_code, etc.)
+- Capacidad de pasar el control a otros ModuleAgents para información entre módulos
 
-**Especialidades:**
-- 🐍 Desarrollo en Python
-- 🎨 Arquitectura de código limpio
-- 📝 Docstrings integrales
-- 🧪 Cobertura de pruebas
+Los ModuleAgents se crean dinámicamente basados en el escaneo del proyecto (un agente por módulo detectado).
 
-### 🔍 Agente Reviewer
-**Rol**: Experto en aseguramiento de calidad
+#### 📜 GitAgent
+**Responsabilidad:** Historial de Git y análisis de cambios
 
-Revisa implementaciones para corrección, seguridad, rendimiento y mejores prácticas.
+Maneja preguntas sobre:
+- Commits recientes y cambios
+- Quién cambió qué
+- Historial de cambios y justificación
+- Información de blame
 
-**Especialidades:**
-- ✅ Evaluación de calidad de código
-- 🔒 Análisis de seguridad
-- ⚡ Optimización de rendimiento
-- 📋 Verificación de mejores prácticas
+### Ubicación de Implementación
 
-### 📚 Agente Researcher
-**Rol**: Recopilador de información e investigador
+- **Código:** Lógica de construcción de Router y ModuleAgent en `engine/repobrain_engine/hub/agents.py`
+- **Pipeline:** `engine/repobrain_engine/hub/ask_pipeline.py`
+- **Conocimiento:** Lee del directorio de generación apuntado por `.repobrain/current.json`
 
-Investiga soluciones, recopila contexto y proporciona conocimiento fundamental para tareas complejas.
+### Estrategia de Fallback
 
-**Especialidades:**
-- 🔎 Investigación de problemas
-- 📚 Síntesis de información
-- 🧠 Recopilación de contexto
-- 💡 Generación de insights
+El pipeline de ask implementa un mecanismo de fallback de tres niveles:
 
-## 🚀 Usando el Swarm
+1. **`_ask_with_structured_facts`** — Usa facts estructurados (claims JSON + verificación de fuente)
+2. **`_ask_with_agent_md`** — Recurre a archivos agent.md (conocimiento en texto plano)
+3. **`_ask_with_legacy_swarm`** — Fallback final (si ambos fallan)
 
-### Ejecutar Demo Interactivo
+Esto asegura que la funcionalidad ask permanezca disponible incluso si la base de conocimiento está parcialmente generada o usa formatos antiguos.
+
+## 🔧 Configuración y Extensión
+
+### Usando Diferentes Backends LLM
+
+1. **Basado en API (estándar):**
+   ```bash
+   rb-setup  # Elige OpenAI, DeepSeek, Groq, etc.
+   ```
+
+2. **Host-runner (sin API key):**
+   ```bash
+   export RB_HOST_RUNNER=codex  # o generic
+   # Usa IDE CLI con sesión iniciada, no se necesita API key
+   ```
+
+3. **Endpoint personalizado compatible con OpenAI:**
+   ```bash
+   export OPENAI_BASE_URL=https://tu-endpoint.com/v1
+   export OPENAI_API_KEY=tu-key
+   export OPENAI_MODEL=tu-modelo
+   ```
+
+### Actualización Incremental (`--quick`)
+
+Para árboles de trabajo limpios con cambios confirmados:
 
 ```bash
-python -m repobrain_engine.swarm_demo
+rb-refresh --quick
 ```
 
-Esto inicia un prompt interactivo donde puedes asignar tareas al swarm y ver a especialistas colaborar.
+Esto activa la actualización incremental:
+- **ImpactPlanner** analiza git diff para determinar módulos afectados
+- **ImpactVerifier** verifica el análisis de impacto
+- Solo se actualizan los agent-groups afectados
+- Acelera significativamente la iteración en codebases grandes
 
-### Ejemplo de Interacción
+Implementación: `engine/repobrain_engine/hub/incremental.py`
 
-```
-🧭 [Router] ¿Con qué tarea puedo ayudarte?
-> Construye una calculadora que soporte operaciones matemáticas básicas y revísala por seguridad
+## 📊 Ejemplos de Flujo de Trabajo
 
-🧭 [Router] Analizando tarea...
-📤 [Router → Coder] Construir calculadora con +, -, *, / operaciones
-💻 [Coder] Creando implementación de calculadora...
-📝 [Coder] Generando pruebas integrales...
-✅ [Coder] ¡Implementación completa!
+### Ejemplo 1: Inicializar Nuevo Proyecto
 
-📤 [Router → Reviewer] Revisar calculadora por seguridad y mejores prácticas
-🔍 [Reviewer] Analizando estructura de código...
-🔍 [Reviewer] Evaluación de seguridad: Sin vulnerabilidades encontradas ✅
-🔍 [Reviewer] Evaluación de rendimiento: Óptimo ✅
-✅ [Reviewer] ¡Revisión completa!
+```bash
+# 1. Configurar backend
+rb-setup
 
-🎉 [Router] ¡Tarea completada con éxito!
-```
+# 2. Escanear proyecto y construir base de conocimiento
+rb-refresh
 
-### Uso Programático
+# 3. Verificar base de conocimiento
+rb report  # Muestra módulos detectados, lenguajes, etc.
 
-```python
-from repobrain_engine.swarm import SwarmOrchestrator
-
-swarm = SwarmOrchestrator()
-result = swarm.execute("Construye una utilidad de compresión de archivos con manejo de errores")
-print(result)  # cadena final sintetizada
+# 4. Comenzar a hacer preguntas
+rb-ask "¿Cómo funciona la autenticación?"
 ```
 
-## 🔧 Configuración
+### Ejemplo 2: Actualizaciones Incrementales
 
-La implementación actual usa el mapa de workers en `repobrain_engine/swarm.py`.
-No existe todavía un cargador externo `swarm_config.json`.
+```bash
+# Hacer algunos cambios y confirmar
+git add .
+git commit -m "Actualizar lógica de auth"
 
-## 📊 Logs y trazabilidad
+# Actualización incremental rápida (solo módulos afectados)
+rb-refresh --quick
 
-`SwarmOrchestrator.execute(..., verbose=True)` imprime progreso en stdout.
-También puedes inspeccionar los mensajes en memoria:
-
-```python
-from repobrain_engine.swarm import SwarmOrchestrator
-
-swarm = SwarmOrchestrator()
-swarm.execute("Construir y revisar una calculadora", verbose=False)
-print(swarm.get_message_log())
+# Verificar actualizaciones
+rb-ask "¿Qué cambió en el módulo auth?"
 ```
+
+### Ejemplo 3: Uso de Depuración
+
+```bash
+# Actualizar con logging de depuración
+RB_LOG_LEVEL=DEBUG rb-refresh
+
+# Preguntar con salida verbosa
+RB_LOG_LEVEL=DEBUG rb-ask "¿Dónde está la conexión de base de datos?"
+```
+
+## 🐛 Solución de Problemas
+
+### Falla la Inicialización del Agente
+
+```bash
+# Verificar si el SDK del Agente está instalado
+pip show openai-agents
+
+# Verificar configuración LLM
+cat .env | grep OPENAI
+```
+
+### Base de Conocimiento Incompleta
+
+```bash
+# Verificar estado de actualización
+rb report
+
+# Forzar actualización completa (no incremental)
+rb-refresh  # sin --quick
+
+# Verificar logs de generación
+ls -la .repobrain/
+cat .repobrain/current.json
+```
+
+### Ask Devuelve "No Encontrado"
+
+Posibles causas:
+1. Base de conocimiento no generada o obsoleta → Ejecutar `rb-refresh`
+2. Módulo no detectado por el escáner → Verificar salida de `rb report`
+3. Pregunta enrutada al módulo incorrecto → Probar pregunta más específica
+
+## 🔗 Integración MCP
+
+RepoBrain expone su funcionalidad central como herramientas MCP vía `rb-mcp`:
+
+- **`ask_project`** — Responder preguntas del codebase
+- **`refresh_project`** — Actualizar base de conocimiento
+
+Implementación del servidor MCP: `engine/repobrain_engine/hub/mcp_server.py`
+
+## 🚀 Consejos de Rendimiento
+
+### Acelerar Actualización
+- Usar `--quick` para actualizaciones incrementales (árbol de trabajo limpio después de commit)
+- Excluir directorios innecesarios (configurar patrones de ignorar en `.repobrain/config.json`)
+- Usar modelos más rápidos (ej., GPT-4o-mini o Claude 3.5 Haiku)
+
+### Mejorar Calidad de Respuesta
+- Mantener base de conocimiento actualizada (ejecutar `rb-refresh` regularmente)
+- Hacer preguntas específicas (mencionar nombres de archivos, características o módulos)
+- Usar modelos de mayor capacidad para consultas complejas
+
+## 📚 Referencias
+
+### Archivos Principales
+- `engine/repobrain_engine/hub/agents.py` — Definiciones de agentes
+- `engine/repobrain_engine/hub/refresh_pipeline.py` — Flujo de actualización
+- `engine/repobrain_engine/hub/ask_pipeline.py` — Flujo de preguntas
+- `engine/repobrain_engine/hub/incremental.py` — Actualización incremental
+- `engine/repobrain_engine/hub/host_runner.py` — Backend CLI local
+- `engine/repobrain_engine/hub/storage.py` — Almacenamiento de conocimiento
+
+### Documentación Relacionada
+- [Filosofía del Proyecto](PHILOSOPHY.md) — Límites del producto y alcance de soporte
+- [Características Zero-Config](ZERO_CONFIG.md) — Descubrimiento de herramientas y contexto
+- [Inicio Rápido](QUICK_START.md) — Instalación y primeros pasos
 
 ---
 

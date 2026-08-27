@@ -19,7 +19,7 @@ one IDE.
 | 6️⃣ **Dynamic Discovery** | ✅ Complete | Auto tool & context loading |
 | 7️⃣ **Multi-Agent Swarm** | ✅ Complete | Router-Worker orchestration |
 | 8️⃣ **MCP Integration** | ✅ Complete | Model Context Protocol support |
-| 9️⃣ **Enterprise Core** | 🚀 In Progress | Safety boundaries, observability, deployment polish |
+| 9️⃣ **Enterprise Core** | ✅ Complete | Safety boundaries, observability, deployment polish |
 | 🔟 **Knowledge Hub** | ✅ Complete | Multi-agent project context system |
 
 ## ✅ Completed Phases
@@ -73,7 +73,7 @@ one IDE.
 **Goal**: Zero-config tool and knowledge loading
 
 **Achievements:**
-- Automatic tool discovery from `repobrain_engine/tools/`
+- Automatic tool discovery from `engine/repobrain_engine/tools/`
 - Auto-injection from `.context/` files
 - Hot reload on file changes
 - Docstring-based help generation
@@ -82,10 +82,10 @@ one IDE.
 **Goal**: Collaborative multi-specialist execution
 
 **Achievements:**
-- Router-Worker agent architecture
-- Specialist agents (Coder, Reviewer, Researcher)
-- Task decomposition and synthesis
-- Artifact coordination
+- **Refresh Swarm**: Three-agent handoff chain (ScanAnalyst → ArchitectureReviewer → ConventionWriter) for project analysis
+- **Ask Swarm**: Dynamic Router-Worker pattern with per-module agents for grounded Q&A
+- Module-based question routing with file evidence
+- Git history integration for change tracking
 
 ### Phase 8: MCP Integration ✅
 **Goal**: Universal external tool connectivity
@@ -246,20 +246,21 @@ Ready to code? Pick a product-hardening component:
 **Completed:** March 2026
 
 **Achievements:**
-- Hub module (`repobrain_engine/hub/`) with scanner, agents, and pipeline
+- Hub module (`engine/repobrain_engine/hub/`) with scanner, agents, refresh/ask pipelines
 - `rb-refresh` — scans project and generates `.repobrain/conventions.md` via LLM
 - `rb-ask` — answers project questions using reviewer agent
 - `rb report` / `rb log-decision` — local memory and decision logging
 - OpenAI Agent SDK integration with LiteLLM for model flexibility
 
-## 📈 Adoption Timeline
+## 📈 Development Timeline
 
-- **2024 H2**: Foundation through MCP Integration (Phases 1–8) — completed
-- **2025**: Enterprise Core (Phase 9) — sandbox MVP, safety docs, observability
-- **2026 Q1**: Knowledge Hub (Phase 10) — completed
-- **2026+**: public repository knowledge engine hardening
+- **2024 H2**: Foundation through MCP Integration (Phases 1–8) ✅
+- **2025**: Enterprise Core (Phase 9) — sandbox MVP, safety docs, observability ✅
+- **2026 Q1–Q2**: Knowledge Hub (Phase 10) — generation storage, structured evidence, multi-language adapters ✅
+- **2026 Q3** (current): Host-runner backend, incremental refresh, agent-group architecture ✅
+- **2026+**: Continued refinement and community-driven features
 
-*(Timeline is aspirational and dependent on community adoption)*
+*(Development is community-driven and evolves based on real-world usage)*
 
 ## 💡 Product Use Cases
 

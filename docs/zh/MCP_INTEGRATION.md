@@ -91,7 +91,7 @@ if __name__ == "__main__":
   "name": "my-analysis",
   "transport": "stdio",
   "command": "python",
-  "args": ["repobrain_engine/tools/my_server.py"],
+  "args": ["engine/repobrain_engine/tools/my_server.py"],
   "enabled": true
 }
 ```
@@ -117,7 +117,7 @@ manager.shutdown()
 
 ## 🐛 故障排查
 
-- 无法连接：先手动运行服务器命令（如 `python repobrain_engine/tools/my_server.py`），确认 `npx` 等命令存在。
+- 无法连接：先手动运行服务器命令（如 `python engine/repobrain_engine/tools/my_server.py`），确认 `npx` 等命令存在。
 - 工具未出现：重启 Agent，并确认对应 MCP 服务器已在 `mcp_servers.json` 里启用。
 - 性能问题：禁用不需要的服务器；远程优先用 `http`；必要时缓存结果。
 
