@@ -261,7 +261,7 @@ repobrain/
         ├── _cli_entry.py    # rb-ask / rb-refresh puntos de entrada
         ├── config.py        # Configuración Pydantic
         ├── hub/             # ★ Núcleo: clúster multi-agente
-        │   ├── agents.py    #   Refresh/Ask Swarm agents (ScanAnalyst/ArchitectureReviewer/ConventionWriter + ContextCurator/DeepAnalyst/AnswerSynthesizer)
+        │   ├── agents.py    #   Refresh swarm (ScanAnalyst → ArchitectureReviewer → ConventionWriter) + Ask swarm (Router / ModuleAgent / GitAgent)
         │   ├── contracts.py #   Modelos Pydantic: claims, evidencia, estado de refresh
         │   ├── ask_pipeline.py    # facts estructurados + swarm legacy
         │   ├── refresh_pipeline.py # orquestación de refresh basado en evidencia

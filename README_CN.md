@@ -278,7 +278,7 @@ repobrain/
         ├── _cli_entry.py    # rb-ask / rb-refresh 入口
         ├── config.py        # Pydantic 配置
         ├── hub/             # ★ 核心：多智能体集群
-        │   ├── agents.py    #   Refresh/Ask Swarm agents (ScanAnalyst/ArchitectureReviewer/ConventionWriter + ContextCurator/DeepAnalyst/AnswerSynthesizer)
+        │   ├── agents.py    #   Refresh swarm (ScanAnalyst → ArchitectureReviewer → ConventionWriter) + Ask swarm (Router / ModuleAgent / GitAgent)
         │   ├── contracts.py #   Pydantic 模型：claims、证据、刷新状态
         │   ├── ask_pipeline.py    # agent.md 路由问答
         │   ├── refresh_pipeline.py # LLM 驱动刷新 → agents/*.md + map.md

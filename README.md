@@ -508,7 +508,7 @@ repobrain/
         ├── _cli_entry.py    # rb-ask / rb-refresh / rb-mcp + python -m dispatch
         ├── config.py        # Pydantic configuration
         ├── hub/             # ★ Core: multi-agent cluster
-        │   ├── agents.py    #   Refresh/Ask Swarm agents (ScanAnalyst/ArchitectureReviewer/ConventionWriter + ContextCurator/DeepAnalyst/AnswerSynthesizer)
+        │   ├── agents.py    #   Refresh swarm (ScanAnalyst → ArchitectureReviewer → ConventionWriter) + Ask swarm (Router / ModuleAgent / GitAgent)
         │   ├── contracts.py #   Pydantic models: claims, evidence, refresh status
         │   ├── ask_pipeline.py    # agent.md + graph-enriched ask
         │   ├── refresh_pipeline.py # LLM-driven refresh → agents/*.md + map.md
