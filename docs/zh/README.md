@@ -87,7 +87,7 @@
 
 ### DevOps/部署
 1) 阅读 [快速开始](QUICK_START.md) 的 Docker 部分
-2) 查看 [开发路线图](ROADMAP.md) 的 Phase 9（Enterprise Core）
+2) 了解 [Sandbox 执行](SANDBOX.md) 的安全边界
 3) 在 [MCP 集成](MCP_INTEGRATION.md) 配置外部服务器
 
 ### 架构师
@@ -97,7 +97,7 @@
 
 ### 贡献者
 1) 阅读 [项目理念](PHILOSOPHY.md)
-2) 查看 [开发路线图](ROADMAP.md) Phase 9 的开放议题
+2) 查看 [开发路线图](ROADMAP.md) 了解当前架构
 3) 提交 Issue/PR 讨论想法或实现
 
 ## 🔗 外部资源
@@ -140,7 +140,7 @@ A: 自 2026 年 4 月起，`rb-refresh` 为每个模块生成结构化 JSON 声�
 ## 🤝 贡献
 
 - 报告问题或想法：[GitHub Issues](https://github.com/study8677/repobrain/issues)
-- 提交代码或改进文档：优先关注 [开发路线图](ROADMAP.md) Phase 9 的议题
+- 提交代码或改进文档：查看 [开发路线图](ROADMAP.md) 了解架构
 - 欢迎通过 PR 修复错别字、补充示例
 
 ## 📞 支持

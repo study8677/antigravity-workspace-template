@@ -17,7 +17,7 @@ de archivos.
 - **[Protocolo de Swarm](SWARM_PROTOCOL.md)** — Orquestación de agentes especialistas para tareas complejas
 
 ### Planificación y Visión
-- **[Hoja de Ruta de Desarrollo](ROADMAP.md)** — Progreso actual y planes futuros hasta Fase 9
+- **[Hoja de Ruta de Desarrollo](ROADMAP.md)** — Fases completadas y visión arquitectónica
 
 ## 🌟 Características Clave
 
@@ -90,7 +90,7 @@ Llama cualquier API compatible con OpenAI mediante la herramienta integrada `cal
 
 ### Para DevOps/Despliegue
 1. Lee [Inicio Rápido](QUICK_START.md) sección Docker
-2. Consulta [Hoja de Ruta de Desarrollo](ROADMAP.md) Fase 9 (Enterprise Core)
+2. Comprende [Sandbox](SANDBOX.md) fronteras de seguridad
 3. Configura servidores MCP en [Integración de MCP](MCP_INTEGRATION.md)
 
 ### Para Arquitectos
@@ -100,7 +100,7 @@ Llama cualquier API compatible con OpenAI mediante la herramienta integrada `cal
 
 ### Para Contribuidores
 1. Lee [Filosofía del Proyecto](PHILOSOPHY.md)
-2. Consulta [Hoja de Ruta de Desarrollo](ROADMAP.md) Fase 9
+2. Consulta [Hoja de Ruta de Desarrollo](ROADMAP.md) arquitectura actual
 3. Abre un issue para proponer ideas
 
 ## 🔗 Recursos Externos
@@ -152,7 +152,7 @@ Bienvenemos contribuciones en todos los niveles:
 [Propón tu pensamiento](https://github.com/study8677/repobrain/issues/new)
 
 ### Enviar Código
-¿Listo para codificar? Consulta la [Hoja de Ruta](ROADMAP.md) Fase 9 para áreas abiertas.
+¿Listo para codificar? Consulta la [Hoja de Ruta](ROADMAP.md) para comprender la arquitectura actual.
 
 ### Mejorar Documentación
 ¿Ves un typo o sección poco clara? ¡Envía un PR para mejorar los docs!

@@ -16,7 +16,7 @@ knowledge engine for grounded codebase Q&A.
 - **[Multi-Agent Swarm](SWARM_PROTOCOL.md)** — Orchestrate specialist agents for complex tasks
 
 ### Planning & Vision
-- **[Development Roadmap](ROADMAP.md)** — Current progress and future plans through Phase 9
+- **[Development Roadmap](ROADMAP.md)** — Completed phases and architectural vision
 
 ## 🌟 Key Features
 
@@ -74,7 +74,7 @@ server.
 
 ### For DevOps/Deployment
 1. Read [Quick Start](QUICK_START.md) Docker section
-2. Check [Development Roadmap](ROADMAP.md) Phase 9 (Enterprise Core)
+2. Understand [Sandbox Execution](SANDBOX.md) safety boundaries
 3. Configure MCP servers in [MCP Integration](MCP_INTEGRATION.md)
 
 ### For Architects
@@ -136,7 +136,7 @@ Have an architectural idea? Ideas are contributions too!
 [Propose your thought](https://github.com/study8677/repobrain/issues/new)
 
 ### Submit Code
-Ready to code? Check the [Roadmap](ROADMAP.md) Phase 9 for open areas.
+Ready to code? Check the [Roadmap](ROADMAP.md) to understand the current architecture.
 
 ### Improve Docs
 See a typo or unclear section? Submit a PR to improve the docs!
