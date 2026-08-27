@@ -72,6 +72,8 @@ Lo mantiene bajo 300 palabras, genera SOLO contenido Markdown.
 
 Cuando no hay API key configurada (`RB_HOST_RUNNER` establecido en `codex` o `generic`), Refresh usa un Agente de Convenciones de turno único sin herramientas (`build_single_turn_convention_agent()`) que colapsa la cadena de tres etapas en una sola generación.
 
+**Importante:** El modo host-runner para refresh es de turno único solamente. No usa la cadena completa de handoff de tres agentes.
+
 ## 💬 Ask Swarm: Enrutador de Módulos Dinámico
 
 Cuando ejecutas `rb-ask "pregunta"`, el Ask Swarm enruta tu pregunta al agente del módulo relevante y devuelve una respuesta con rutas de archivo y números de línea.
@@ -115,11 +117,11 @@ graph TD
 **Responsabilidad:** Conocimiento profundo de un módulo específico
 
 Cada módulo obtiene su propio agente con:
-- Facts estructurados del módulo (claims JSON + evidencia de fuente)
+- Conocimiento del agente del módulo (`agents/*.md` — resúmenes de módulos agrupados o `modules/*.md` heredado)
 - Herramientas para explorar código (read_file, search_code, etc.)
 - Capacidad de pasar el control a otros ModuleAgents para información entre módulos
 
-Los ModuleAgents se crean dinámicamente basados en el escaneo del proyecto (un agente por módulo detectado).
+Los ModuleAgents se crean dinámicamente en el camino de swarm heredado (un agente por módulo detectado). Cuando existen artefactos estructurados, el pipeline ask usa `_ask_with_agent_md` en su lugar, que enruta directamente vía `map.md` sin construir el swarm completo.
 
 #### 📜 GitAgent
 **Responsabilidad:** Historial de Git y análisis de cambios
@@ -136,13 +138,29 @@ Maneja preguntas sobre:
 - **Pipeline:** `engine/repobrain_engine/hub/ask_pipeline.py`
 - **Conocimiento:** Lee del directorio de generación apuntado por `.repobrain/current.json`
 
+### Modo Host-Runner (Sin Enrutamiento Multi-Agente)
+
+Cuando `RB_HOST_RUNNER` está configurado (`codex` o `generic`), Ask usa `_ask_with_host_runner` exclusivamente:
+- **Invocación CLI local única** con contexto del proyecto y pregunta
+- **No** construye Router/ModuleAgent/GitAgent ni realiza handoffs multi-agente
+- Devuelve respuesta directa del CLI local (sin orquestación de swarm)
+
+Los usuarios del modo sin API key deben entender que reciben una respuesta local de turno único, no la colaboración completa Router-Worker.
+
 ### Estrategia de Fallback
 
-El pipeline de ask implementa un mecanismo de fallback de tres niveles:
+El pipeline de ask implementa un mecanismo de fallback sensible al contexto:
 
-1. **`_ask_with_structured_facts`** — Usa facts estructurados (claims JSON + verificación de fuente)
-2. **`_ask_with_agent_md`** — Recurre a archivos agent.md (conocimiento en texto plano)
-3. **`_ask_with_legacy_swarm`** — Fallback final (si ambos fallan)
+**Cuando `RB_HOST_RUNNER` está configurado** (codex o generic):
+- Usa `_ask_with_host_runner` exclusivamente
+- No construye Router/ModuleAgent/GitAgent
+- Invocación CLI local única sin enrutamiento multi-agente
+
+**Flujo ask estándar basado en API:**
+1. **`_ask_with_structured_facts`** (cuando `.repobrain/map.md` y `agents/*.md` existen):
+   - Primero intenta `_ask_with_agent_md` — Enruta vía map.md al conocimiento de agent.md
+   - Recurre a `_ask_with_legacy_facts` dentro de la misma llamada — Usa `*.facts.json` heredado si está disponible
+2. **`_ask_with_legacy_swarm`** — Fallback final cuando los artefactos estructurados no devuelven respuesta
 
 Esto asegura que la funcionalidad ask permanezca disponible incluso si la base de conocimiento está parcialmente generada o usa formatos antiguos.
 
@@ -157,7 +175,13 @@ Esto asegura que la funcionalidad ask permanezca disponible incluso si la base d
 
 2. **Host-runner (sin API key):**
    ```bash
-   export RB_HOST_RUNNER=codex  # o generic
+   # Preset Codex (configuración incorporada)
+   export RB_HOST_RUNNER=codex
+   
+   # Generic runner (requiere plantilla RB_HOST_COMMAND)
+   export RB_HOST_RUNNER=generic
+   export RB_HOST_COMMAND='trae-cli exec --cd {workspace} --sandbox read-only --skip-git-repo-check --ephemeral -o {output_file}'
+   export RB_HOST_OUTPUT_MODE=file
    # Usa IDE CLI con sesión iniciada, no se necesita API key
    ```
 
@@ -219,11 +243,14 @@ rb-ask "¿Qué cambió en el módulo auth?"
 ### Ejemplo 3: Uso de Depuración
 
 ```bash
-# Actualizar con logging de depuración
-RB_LOG_LEVEL=DEBUG rb-refresh
+# Preguntar con salida verbosa (progreso en streaming)
+rb-ask "¿Dónde está la conexión de base de datos?"
 
-# Preguntar con salida verbosa
-RB_LOG_LEVEL=DEBUG rb-ask "¿Dónde está la conexión de base de datos?"
+# Verificar estado de actualización
+rb report
+
+# Forzar actualización completa (no incremental)
+rb-refresh  # sin --quick
 ```
 
 ## 🐛 Solución de Problemas
@@ -272,7 +299,7 @@ Implementación del servidor MCP: `engine/repobrain_engine/hub/mcp_server.py`
 
 ### Acelerar Actualización
 - Usar `--quick` para actualizaciones incrementales (árbol de trabajo limpio después de commit)
-- Excluir directorios innecesarios (configurar patrones de ignorar en `.repobrain/config.json`)
+- Las exclusiones de escaneo están incorporadas (venv, node_modules, .git, etc. — ver `SKIP_DIRS` en `engine/repobrain_engine/hub/_constants.py`)
 - Usar modelos más rápidos (ej., GPT-4o-mini o Claude 3.5 Haiku)
 
 ### Mejorar Calidad de Respuesta
