@@ -508,17 +508,21 @@ repobrain/
         ├── _cli_entry.py    # rb-ask / rb-refresh / rb-mcp + python -m dispatch
         ├── config.py        # Pydantic configuration
         ├── hub/             # ★ Core: multi-agent cluster
-        │   ├── agents.py    #   Router + ModuleAgent + GitAgent
+        │   ├── agents.py    #   Refresh/Ask Swarm agents (ScanAnalyst/ArchitectureReviewer/ConventionWriter + ContextCurator/DeepAnalyst/AnswerSynthesizer)
         │   ├── contracts.py #   Pydantic models: claims, evidence, refresh status
         │   ├── ask_pipeline.py    # agent.md + graph-enriched ask
         │   ├── refresh_pipeline.py # LLM-driven refresh → agents/*.md + map.md
         │   ├── ask_tools.py
         │   ├── scanner.py   #   multi-language project scanning
         │   ├── module_grouping.py # smart functional file grouping
+        │   ├── incremental.py #   committed-diff / --quick agent-group refresh
+        │   ├── host_runner.py #   local CLI backend, no API key
+        │   ├── storage.py   #   generation dirs + current.json
         │   ├── structure.py
         │   ├── knowledge_graph.py
         │   ├── retrieval_graph.py
-        │   └── mcp_server.py
+        │   ├── mcp_server.py
+        │   └── language_adapters/ # language-specific code adapters
         ├── mcp_client.py    # MCP consumer (connects external tools)
         ├── memory.py        # Persistent interaction memory
         ├── tools/           # MCP query tools + extensions
