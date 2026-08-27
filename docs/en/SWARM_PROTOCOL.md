@@ -72,6 +72,8 @@ Keeps it under 300 words, outputs ONLY Markdown content.
 
 When no API key is configured (`RB_HOST_RUNNER` set to `codex` or `generic`), Refresh uses a single-turn, tool-free Convention Agent (`build_single_turn_convention_agent()`) that collapses the three-stage chain into one generation.
 
+**Important:** Host-runner mode for refresh is single-turn only. It does not use the full three-agent handoff chain.
+
 ## 💬 Ask Swarm: Dynamic Module Router
 
 When you run `rb-ask "question"`, the Ask Swarm routes your question to the relevant module's agent and returns an answer with file paths and line numbers.
@@ -115,11 +117,11 @@ graph TD
 **Responsibility:** Deep knowledge of a specific module
 
 Each module gets its own agent with:
-- Module's structured facts (JSON claims + source evidence)
+- Module's agent knowledge (`agents/*.md` — grouped module summaries or legacy `modules/*.md`)
 - Tools to explore code (read_file, search_code, etc.)
 - Ability to hand off to other ModuleAgents for cross-module information
 
-ModuleAgents are created dynamically based on the project scan (one agent per detected module).
+ModuleAgents are created dynamically in the legacy swarm path (one agent per detected module). When structured artifacts exist, the ask pipeline uses `_ask_with_agent_md` instead, which routes directly via `map.md` without building the full swarm.
 
 #### 📜 GitAgent
 **Responsibility:** Git history and change analysis
@@ -136,13 +138,29 @@ Handles questions about:
 - **Pipeline:** `engine/repobrain_engine/hub/ask_pipeline.py`
 - **Knowledge:** Reads from generation directory pointed to by `.repobrain/current.json`
 
+### Host-Runner Mode (No Multi-Agent Routing)
+
+When `RB_HOST_RUNNER` is set (`codex` or `generic`), Ask uses `_ask_with_host_runner` exclusively:
+- **Single local CLI invocation** with project context and question
+- Does **not** build Router/ModuleAgent/GitAgent or perform multi-agent handoffs
+- Returns direct answer from the local host CLI (no swarm orchestration)
+
+Users of the no-API-key path must understand that they get a single-turn local answer, not the full Router-Worker collaboration.
+
 ### Fallback Strategy
 
-The ask pipeline implements a three-tier fallback mechanism:
+The ask pipeline implements a context-sensitive fallback mechanism:
 
-1. **`_ask_with_structured_facts`** — Uses structured facts (JSON claims + source verification)
-2. **`_ask_with_agent_md`** — Falls back to agent.md files (plain text knowledge)
-3. **`_ask_with_legacy_swarm`** — Final fallback (if both fail)
+**When `RB_HOST_RUNNER` is set** (codex or generic):
+- Uses `_ask_with_host_runner` exclusively
+- Does not build Router/ModuleAgent/GitAgent
+- Single local CLI invocation with no multi-agent routing
+
+**Standard API-based ask flow:**
+1. **`_ask_with_structured_facts`** (when `.repobrain/map.md` and `agents/*.md` exist):
+   - First tries `_ask_with_agent_md` — Routes via map.md to agent.md knowledge
+   - Falls back to `_ask_with_legacy_facts` within the same call — Uses legacy `*.facts.json` if available
+2. **`_ask_with_legacy_swarm`** — Final fallback when structured artifacts return no answer
 
 This ensures ask functionality remains available even if knowledge base is partially generated or uses older formats.
 
@@ -157,7 +175,13 @@ This ensures ask functionality remains available even if knowledge base is parti
 
 2. **Host-runner (no API key):**
    ```bash
-   export RB_HOST_RUNNER=codex  # or generic
+   # Codex preset (built-in configuration)
+   export RB_HOST_RUNNER=codex
+   
+   # Generic runner (requires RB_HOST_COMMAND template)
+   export RB_HOST_RUNNER=generic
+   export RB_HOST_COMMAND='trae-cli exec --cd {workspace} --sandbox read-only --skip-git-repo-check --ephemeral -o {output_file}'
+   export RB_HOST_OUTPUT_MODE=file
    # Uses logged-in IDE CLI, no API key needed
    ```
 
@@ -219,11 +243,14 @@ rb-ask "What changed in the auth module?"
 ### Example 3: Debugging Usage
 
 ```bash
-# Refresh with debug logging
-RB_LOG_LEVEL=DEBUG rb-refresh
+# Ask with verbose output (streamed progress)
+rb-ask "Where is the database connection?"
 
-# Ask with verbose output
-RB_LOG_LEVEL=DEBUG rb-ask "Where is the database connection?"
+# Check refresh status
+rb report
+
+# Force full refresh (non-incremental)
+rb-refresh  # without --quick
 ```
 
 ## 🐛 Troubleshooting
@@ -272,7 +299,7 @@ MCP server implementation: `engine/repobrain_engine/hub/mcp_server.py`
 
 ### Speed Up Refresh
 - Use `--quick` for incremental updates (clean worktree after commit)
-- Exclude unnecessary directories (configure ignore patterns in `.repobrain/config.json`)
+- Scan exclusions are built-in (venv, node_modules, .git, etc. — see `SKIP_DIRS` in `engine/repobrain_engine/hub/_constants.py`)
 - Use faster models (e.g., GPT-4o-mini or Claude 3.5 Haiku)
 
 ### Improve Answer Quality

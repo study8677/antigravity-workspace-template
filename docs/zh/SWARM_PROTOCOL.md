@@ -72,6 +72,8 @@ graph LR
 
 当没有配置 API key 时（`RB_HOST_RUNNER` 设置为 `codex` 或 `generic`），Refresh 会使用单轮、无工具的 Convention Agent (`build_single_turn_convention_agent()`)，该 Agent 将三阶段链压缩为一次生成。
 
+**重要：** Host-runner 模式的 refresh 仅为单轮。不使用完整的三 Agent handoff 链。
+
 ## 💬 Ask Swarm：动态模块路由
 
 当你运行 `rb-ask "问题"` 时，Ask Swarm 会将问题路由到相关模块的 Agent 并返回带有文件路径和行号的答案。
@@ -115,11 +117,11 @@ graph TD
 **职责：** 负责特定模块的深度知识
 
 每个模块都有自己的 Agent，具有：
-- 模块的结构化 facts（JSON claims + 源码证据）
+- 模块的 agent 知识（`agents/*.md` — 分组模块摘要或旧版 `modules/*.md`）
 - 探索代码的工具（read_file、search_code 等）
 - 可以移交给其他 ModuleAgent 以获取跨模块信息
 
-ModuleAgent 根据项目扫描结果动态创建（每个检测到的模块一个 Agent）。
+ModuleAgent 在旧版 swarm 路径中动态创建（每个检测到的模块一个 Agent）。当结构化工件存在时，ask pipeline 使用 `_ask_with_agent_md`，通过 `map.md` 直接路由，而不构建完整的 swarm。
 
 #### 📜 GitAgent
 **职责：** Git 历史和变更分析
@@ -136,13 +138,29 @@ ModuleAgent 根据项目扫描结果动态创建（每个检测到的模块一�
 - **管道：** `engine/repobrain_engine/hub/ask_pipeline.py`
 - **知识库：** 从 `.repobrain/current.json` 指向的生成目录读取
 
+### Host-Runner 模式（无多 Agent 路由）
+
+当设置 `RB_HOST_RUNNER`（`codex` 或 `generic`）时，Ask 仅使用 `_ask_with_host_runner`：
+- **单次本地 CLI 调用**，包含项目上下文和问题
+- **不**构建 Router/ModuleAgent/GitAgent 或执行多 Agent handoff
+- 从本地 host CLI 直接返回答案（无 swarm 编排）
+
+使用无 API key 路径的用户必须理解，他们得到的是单轮本地答案，而非完整的 Router-Worker 协作。
+
 ### 回退策略
 
-Ask pipeline 实现了三层回退机制：
+Ask pipeline 实现了上下文感知的回退机制：
 
-1. **`_ask_with_structured_facts`** — 使用结构化 facts（JSON claims + 源码验证）
-2. **`_ask_with_agent_md`** — 回退到 agent.md 文件（纯文本知识）
-3. **`_ask_with_legacy_swarm`** — 最终回退（如果前两者都失败）
+**当设置 `RB_HOST_RUNNER`（codex 或 generic）时：**
+- 仅使用 `_ask_with_host_runner`
+- 不构建 Router/ModuleAgent/GitAgent
+- 单次本地 CLI 调用，无多 Agent 路由
+
+**标准 API-based ask 流程：**
+1. **`_ask_with_structured_facts`**（当 `.repobrain/map.md` 和 `agents/*.md` 存在时）：
+   - 首先尝试 `_ask_with_agent_md` — 通过 map.md 路由到 agent.md 知识
+   - 在同一调用中回退到 `_ask_with_legacy_facts` — 如可用则使用旧版 `*.facts.json`
+2. **`_ask_with_legacy_swarm`** — 当结构化工件未返回答案时的最终回退
 
 这确保了即使知识库部分生成或使用旧格式，ask 功能仍然可用。
 
@@ -157,7 +175,13 @@ Ask pipeline 实现了三层回退机制：
 
 2. **Host-runner（无 API key）：**
    ```bash
-   export RB_HOST_RUNNER=codex  # 或 generic
+   # Codex 预设（内置配置）
+   export RB_HOST_RUNNER=codex
+   
+   # Generic runner（需要 RB_HOST_COMMAND 模板）
+   export RB_HOST_RUNNER=generic
+   export RB_HOST_COMMAND='trae-cli exec --cd {workspace} --sandbox read-only --skip-git-repo-check --ephemeral -o {output_file}'
+   export RB_HOST_OUTPUT_MODE=file
    # 使用登录的 IDE CLI，无需 API key
    ```
 
@@ -219,11 +243,14 @@ rb-ask "auth 模块有什么变化？"
 ### 示例 3：调试使用
 
 ```bash
-# 带调试日志的刷新
-RB_LOG_LEVEL=DEBUG rb-refresh
+# 带详细输出的问答（流式进度）
+rb-ask "数据库连接在哪里？"
 
-# 带详细输出的问答
-RB_LOG_LEVEL=DEBUG rb-ask "数据库连接在哪里？"
+# 检查刷新状态
+rb report
+
+# 强制完全刷新（非增量）
+rb-refresh  # 不使用 --quick
 ```
 
 ## 🐛 故障排查
@@ -272,7 +299,7 @@ MCP server 实现：`engine/repobrain_engine/hub/mcp_server.py`
 
 ### 加快刷新速度
 - 使用 `--quick` 进行增量更新（提交后的干净工作树）
-- 排除不必要的目录（在 `.repobrain/config.json` 中配置忽略模式）
+- 扫描排除项已内置（venv、node_modules、.git 等 — 参见 `engine/repobrain_engine/hub/_constants.py` 中的 `SKIP_DIRS`）
 - 使用更快的模型（例如 GPT-4o-mini 或 Claude 3.5 Haiku）
 
 ### 提高回答质量
