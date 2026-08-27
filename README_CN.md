@@ -278,14 +278,18 @@ repobrain/
         ├── _cli_entry.py    # rb-ask / rb-refresh 入口
         ├── config.py        # Pydantic 配置
         ├── hub/             # ★ 核心：多智能体集群
-        │   ├── agents.py    #   Router + ModuleAgent + GitAgent
+        │   ├── agents.py    #   Refresh swarm (ScanAnalyst → ArchitectureReviewer → ConventionWriter) + Ask swarm (Router / ModuleAgent / GitAgent)
         │   ├── contracts.py #   Pydantic 模型：claims、证据、刷新状态
         │   ├── ask_pipeline.py    # agent.md 路由问答
         │   ├── refresh_pipeline.py # LLM 驱动刷新 → agents/*.md + map.md
         │   ├── ask_tools.py #   代码探索工具
         │   ├── scanner.py   #   多语言项目扫描
         │   ├── module_grouping.py # 智能功能分组
-        │   └── mcp_server.py#   MCP 服务端 (rb-mcp)
+        │   ├── incremental.py #   增量刷新（--quick）
+        │   ├── host_runner.py #   本地 CLI 后端（无 API key）
+        │   ├── storage.py   #   知识库存储（current.json）
+        │   ├── mcp_server.py#   MCP 服务端 (rb-mcp)
+        │   └── language_adapters/ # 多语言适配器
         ├── mcp_client.py    # MCP 消费端（连接外部工具）
         ├── memory.py        # 持久交互记忆
         ├── tools/           # MCP 查询工具 + 扩展工具
