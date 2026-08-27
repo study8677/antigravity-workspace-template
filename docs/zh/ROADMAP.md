@@ -17,7 +17,7 @@ RepoBrain 正收敛为一个可移植的 repository knowledge engine：把 works
 | 6 动态发现 | 完成 | 工具/上下文零配置加载 |
 | 7 Multi-Agent Swarm | 完成 | Router-Worker 编排 |
 | 8 MCP 集成 | 完成 | MCP server / consumer 支持 |
-| 9 产品化加固 | 进行中 | 安全边界、可观测、安装与文档契约 |
+| 9 产品化加固 | 完成 | 安全边界、可观测、安装与文档契约 |
 | 10 Knowledge Hub | 完成 | 代码库刷新、模块知识、路由式问答 |
 
 ## 已完成的核心功能（截至 2026 年 8 月）
