@@ -17,7 +17,7 @@ de archivos.
 - **[Protocolo de Swarm](SWARM_PROTOCOL.md)** — Orquestación de agentes especialistas para tareas complejas
 
 ### Planificación y Visión
-- **[Hoja de Ruta de Desarrollo](ROADMAP.md)** — Progreso actual y planes futuros hasta Fase 9
+- **[Hoja de Ruta de Desarrollo](ROADMAP.md)** — Fases completadas y visión arquitectónica
 
 ## 🌟 Características Clave
 
@@ -25,7 +25,7 @@ de archivos.
 La resumización recursiva comprime automáticamente el historial—los límites de contexto se acabaron.
 
 ### 🛠️ Protocolo Universal de Herramientas
-Patrón genérico ReAct. Solo registra cualquier función Python en `repobrain_engine/tools/`, y el Agente aprende a usarla automáticamente.
+Patrón genérico ReAct. Solo coloca cualquier función Python en `engine/repobrain_engine/tools/`, y el Agente aprende a usarla automáticamente.
 
 ### 🎓 Inicialización de Proyectos con Skills
 Usa la skill integrada `agent-repo-init` para crear un repositorio limpio desde esta plantilla.
@@ -56,27 +56,29 @@ Llama cualquier API compatible con OpenAI mediante la herramienta integrada `cal
 
 ```
 .
-├── .repobrain/        # 🛸 Base de conocimiento generada
-├── .context/            # 📚 Contexto adicional opcional
-├── artifacts/           # 📂 Outputs del agente (planes, logs, visuales)
-├── repobrain_engine/  # 🧠 Código fuente del agente
-│   ├── hub/             # Knowledge Hub (escáner, agentes, pipeline)
-│   ├── mcp_server.py    # Servidor MCP (rb-mcp)
-│   ├── memory.py        # Memoria Markdown
-│   ├── mcp_client.py    # Integración de MCP
-│   ├── swarm.py         # Orquestación multi-agente
-│   ├── agents/          # Agentes especialistas
-│   │   ├── base_agent.py
-│   │   ├── coder_agent.py
-│   │   ├── reviewer_agent.py
-│   │   └── researcher_agent.py
-│   ├── tools/           # Herramientas MCP y extensiones
-│   └── sandbox/         # Ejecución local / microsandbox
-├── tests/               # ✅ Suite de pruebas
-├── scripts/             # 🧪 Scripts de utilidad
-├── docker-compose.yml   # Stack de desarrollo local
-├── README.md            # Página principal de aterrizaje
-└── pyproject.toml       # Dependencias Python
+├── cli/                         # rb CLI, plantillas IDE, herramientas offline
+├── engine/repobrain_engine/    # Motor de conocimiento, hub, servidor MCP, sandbox
+│   ├── hub/                     # Knowledge Hub
+│   │   ├── scanner.py           #   Escáner de módulos
+│   │   ├── refresh_pipeline.py  #   Pipeline de generación de conocimiento
+│   │   ├── ask_pipeline.py      #   Pipeline de preguntas y respuestas
+│   │   ├── agents.py            #   Refresh/Ask Swarm agents
+│   │   ├── incremental.py       #   Actualización incremental (--quick)
+│   │   ├── host_runner.py       #   Backend CLI local (sin API key)
+│   │   ├── mcp_server.py        #   Servidor rb-mcp
+│   │   ├── storage.py           #   Almacenamiento de base de conocimiento (current.json)
+│   │   └── language_adapters/   #   Adaptadores multi-lenguaje
+│   ├── tools/                   # Implementación de herramientas
+│   ├── sandbox/                 # Ejecución local / microsandbox
+│   ├── skills/                  # Skills (research, knowledge-layer, etc.)
+│   ├── memory.py                # Gestión de memoria Markdown
+│   └── mcp_client.py            # Integración MCP
+├── commands/                    # Definiciones de slash commands compartidos
+├── skills/                      # Skills orientados a plugins
+├── docs/                        # Documentación multi-idioma
+├── artifacts/                   # Planes, informes, salidas de benchmarks
+├── memory/                      # Memoria de interacción Markdown
+└── .repobrain/                 # Base de conocimiento generada en repos objetivo
 ```
 
 ## 🎓 Documentación por Rol
@@ -88,7 +90,7 @@ Llama cualquier API compatible con OpenAI mediante la herramienta integrada `cal
 
 ### Para DevOps/Despliegue
 1. Lee [Inicio Rápido](QUICK_START.md) sección Docker
-2. Consulta [Hoja de Ruta de Desarrollo](ROADMAP.md) Fase 9 (Enterprise Core)
+2. Comprende [Sandbox](SANDBOX.md) fronteras de seguridad
 3. Configura servidores MCP en [Integración de MCP](MCP_INTEGRATION.md)
 
 ### Para Arquitectos
@@ -98,7 +100,7 @@ Llama cualquier API compatible con OpenAI mediante la herramienta integrada `cal
 
 ### Para Contribuidores
 1. Lee [Filosofía del Proyecto](PHILOSOPHY.md)
-2. Consulta [Hoja de Ruta de Desarrollo](ROADMAP.md) Fase 9
+2. Consulta [Hoja de Ruta de Desarrollo](ROADMAP.md) arquitectura actual
 3. Abre un issue para proponer ideas
 
 ## 🔗 Recursos Externos
@@ -115,7 +117,7 @@ Llama cualquier API compatible con OpenAI mediante la herramienta integrada `cal
 R: Ejecuta `rb-setup` y elige OpenAI, DeepSeek, Groq, DashScope, NVIDIA NIM, Ollama o un endpoint OpenAI-compatible personalizado. El comando escribe `OPENAI_BASE_URL`, `OPENAI_API_KEY` y `OPENAI_MODEL` en `.env`.
 
 **P: ¿Cómo agrego una herramienta personalizada?**
-R: ¡Coloca un archivo Python en `repobrain_engine/tools/` con tus funciones. Sin registro necesario! Ver [Características Zero-Config](ZERO_CONFIG.md).
+R: ¡Coloca un archivo Python en `engine/repobrain_engine/tools/` con tus funciones. Sin registro necesario! Ver [Características Zero-Config](ZERO_CONFIG.md).
 
 **P: ¿Cómo inicializo un proyecto nuevo desde esta plantilla?**
 R: Usa la skill `agent-repo-init` en modo `quick` o `full`, o ejecuta `skills/agent-repo-init/scripts/init_project.py`. Ver [Características Zero-Config](ZERO_CONFIG.md).
@@ -150,7 +152,7 @@ Bienvenemos contribuciones en todos los niveles:
 [Propón tu pensamiento](https://github.com/study8677/repobrain/issues/new)
 
 ### Enviar Código
-¿Listo para codificar? Consulta la [Hoja de Ruta](ROADMAP.md) Fase 9 para áreas abiertas.
+¿Listo para codificar? Consulta la [Hoja de Ruta](ROADMAP.md) para comprender la arquitectura actual.
 
 ### Mejorar Documentación
 ¿Ves un typo o sección poco clara? ¡Envía un PR para mejorar los docs!
@@ -176,8 +178,8 @@ Este proyecto está bajo la licencia **MIT**. Ver [LICENSE](../../LICENSE) para 
 
 ---
 
-**Última Actualización:** Abril 2026
-**Versión:** Fase 10 (Knowledge Hub) ✅ — pipeline de evidencia estructurada + soporte multi-lenguaje
+**Última Actualización:** Agosto 2026
+**Arquitectura Actual:** Knowledge Hub generativo + host-runner local + actualización incremental agent-group + verificación de evidencia estructurada
 
 **¡Feliz construcción con RepoBrain!** 🚀
 

@@ -24,7 +24,7 @@
 递归摘要自动压缩历史上下文，缓解上下文窗口限制。
 
 ### 🛠️ 通用工具协议
-遵循通用 ReAct 模式；在 `repobrain_engine/tools/` 放入 Python 函数即被自动注册为工具。
+遵循通用 ReAct 模式；在 `engine/repobrain_engine/tools/` 放入 Python 函数即被自动注册为工具。
 
 ### 🎓 基于 Skill 的项目初始化
 使用内置 `agent-repo-init` skill 可以从当前模板快速初始化干净的新仓库。
@@ -53,23 +53,29 @@
 
 ```
 .
-├── .repobrain/        # 🛸 生成的代码库知识库
-├── .context/            # 📚 可选的额外上下文
-├── artifacts/           # 📂 Agent 输出（计划、日志、证据）
-├── repobrain_engine/  # 🧠 Agent 源码
-│   ├── hub/             # 知识中枢（扫描器、Agent、管道）
-│   ├── mcp_server.py    # rb-mcp 服务端
-│   ├── memory.py        # Markdown 记忆管理
-│   ├── mcp_client.py    # MCP 集成
-│   ├── swarm.py         # 多 Agent 编排
-│   ├── agents/          # 专家型 Agent
-│   ├── tools/           # 工具实现
-│   └── sandbox/         # local / microsandbox 代码执行
-├── tests/               # ✅ 测试套件
-├── scripts/             # 🧪 辅助脚本
-├── docker-compose.yml   # 本地开发栈
-├── README.md            # 项目主页
-└── pyproject.toml       # Python 依赖
+├── cli/                         # rb CLI、IDE 模板、离线工具
+├── engine/repobrain_engine/    # 知识引擎、hub、MCP 服务器、sandbox
+│   ├── hub/                     # 知识中枢
+│   │   ├── scanner.py           #   模块扫描器
+│   │   ├── refresh_pipeline.py  #   知识生成管道
+│   │   ├── ask_pipeline.py      #   问答管道
+│   │   ├── agents.py            #   Refresh/Ask Swarm agents
+│   │   ├── incremental.py       #   增量刷新（--quick）
+│   │   ├── host_runner.py       #   本地 CLI 后端（无 API key）
+│   │   ├── mcp_server.py        #   rb-mcp 服务端
+│   │   ├── storage.py           #   知识库存储（current.json）
+│   │   └── language_adapters/   #   多语言适配器
+│   ├── tools/                   # 工具实现
+│   ├── sandbox/                 # local / microsandbox 代码执行
+│   ├── skills/                  # 技能（research、knowledge-layer 等）
+│   ├── memory.py                # Markdown 记忆管理
+│   └── mcp_client.py            # MCP 集成
+├── commands/                    # 共享的 slash 命令定义
+├── skills/                      # 面向插件的技能
+├── docs/                        # 多语言文档
+├── artifacts/                   # 计划、报告、基准测试输出
+├── memory/                      # Markdown 交互记忆
+└── .repobrain/                 # 在目标仓库中生成的知识库
 ```
 
 ## 🎓 按角色阅读
@@ -81,7 +87,7 @@
 
 ### DevOps/部署
 1) 阅读 [快速开始](QUICK_START.md) 的 Docker 部分
-2) 查看 [开发路线图](ROADMAP.md) 的 Phase 9（Enterprise Core）
+2) 了解 [Sandbox 执行](SANDBOX.md) 的安全边界
 3) 在 [MCP 集成](MCP_INTEGRATION.md) 配置外部服务器
 
 ### 架构师
@@ -91,7 +97,7 @@
 
 ### 贡献者
 1) 阅读 [项目理念](PHILOSOPHY.md)
-2) 查看 [开发路线图](ROADMAP.md) Phase 9 的开放议题
+2) 查看 [开发路线图](ROADMAP.md) 了解当前架构
 3) 提交 Issue/PR 讨论想法或实现
 
 ## 🔗 外部资源
@@ -108,7 +114,7 @@
 A: 运行 `rb-setup`，选择 OpenAI、DeepSeek、Groq、DashScope、NVIDIA NIM、Ollama 或自定义 OpenAI-compatible endpoint。命令会写入 `.env` 中的 `OPENAI_BASE_URL`、`OPENAI_API_KEY`、`OPENAI_MODEL`。
 
 **Q: 如何添加自定义工具？**
-A: 将 Python 文件放进 `repobrain_engine/tools/`，无需额外注册，见 [零配置特性](ZERO_CONFIG.md)。
+A: 将 Python 文件放进 `engine/repobrain_engine/tools/`，无需额外注册，见 [零配置特性](ZERO_CONFIG.md)。
 
 **Q: 如何基于模板初始化一个新项目？**
 A: 使用 `agent-repo-init` 的 `quick/full` 模式，或直接运行 `skills/agent-repo-init/scripts/init_project.py`，见 [零配置特性](ZERO_CONFIG.md)。
@@ -134,7 +140,7 @@ A: 自 2026 年 4 月起，`rb-refresh` 为每个模块生成结构化 JSON 声�
 ## 🤝 贡献
 
 - 报告问题或想法：[GitHub Issues](https://github.com/study8677/repobrain/issues)
-- 提交代码或改进文档：优先关注 [开发路线图](ROADMAP.md) Phase 9 的议题
+- 提交代码或改进文档：查看 [开发路线图](ROADMAP.md) 了解架构
 - 欢迎通过 PR 修复错别字、补充示例
 
 ## 📞 支持
@@ -158,8 +164,8 @@ MIT License，详见仓库根目录 `LICENSE`。
 
 ---
 
-**最后更新：2026 年 4 月**
-**当前版本：Phase 10（知识中枢）✅ —— 结构化证据管道 + 多语言模块支持**
+**最后更新：2026 年 8 月**
+**当前架构：** 生成式知识中枢 + 本地 host-runner + 增量 agent-group 刷新 + 结构化证据验证
 
 祝构建愉快！🚀
 

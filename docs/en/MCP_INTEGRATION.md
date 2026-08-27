@@ -133,7 +133,7 @@ if __name__ == "__main__":
 
 ### Register Custom Server
 
-1. Save your server to `repobrain_engine/tools/my_server.py`
+1. Save your server to `engine/repobrain_engine/tools/my_server.py`
 2. Add to `mcp_servers.json`:
 
 ```json
@@ -141,7 +141,7 @@ if __name__ == "__main__":
   "name": "my-analysis",
   "transport": "stdio",
   "command": "python",
-  "args": ["repobrain_engine/tools/my_server.py"],
+  "args": ["engine/repobrain_engine/tools/my_server.py"],
   "enabled": true
 }
 ```
@@ -197,7 +197,7 @@ manager.shutdown()
 ### Server won't connect
 ```bash
 # Check if server process starts
-python repobrain_engine/tools/my_server.py
+python engine/repobrain_engine/tools/my_server.py
 
 # Verify command exists
 which npx

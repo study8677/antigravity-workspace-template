@@ -6,13 +6,13 @@
 
 ## 🛠️ Auto Tool Discovery
 
-Drop any Python file into `repobrain_engine/tools/` and the agent will use it immediately—no imports, no registration, no boilerplate.
+Drop any Python file into `engine/repobrain_engine/tools/` and the agent will use it immediately—no imports, no registration, no boilerplate.
 
 ### How It Works
 
 1. **Define Your Tool**:
 ```python
-# repobrain_engine/tools/sentiment_analyzer.py
+# engine/repobrain_engine/tools/sentiment_analyzer.py
 def analyze_sentiment(text: str) -> dict:
     """Analyzes the sentiment of given text.
     
@@ -43,7 +43,7 @@ The agent will automatically discover and use `analyze_sentiment()`.
 ### Tool Discovery Mechanics
 
 The discovery process:
-1. 🔍 Scans `repobrain_engine/tools/` for all `.py` files
+1. 🔍 Scans `engine/repobrain_engine/tools/` for all `.py` files
 2. 📋 Indexes all top-level functions
 3. 📚 Extracts docstrings for help text
 4. 🔗 Registers public module-level functions with the agent
@@ -94,7 +94,7 @@ def my_tool(param1: str, param2: int) -> str:
 ### Multiple Files Example
 
 ```
-repobrain_engine/tools/
+engine/repobrain_engine/tools/
 ├── sentiment_analyzer.py
 │   └── analyze_sentiment()
 ├── data_processor.py
@@ -110,14 +110,14 @@ All 7 functions are automatically discovered and available to the agent!
 
 ## 🎓 Auto Skill Discovery
 
-Drop a folder under `repobrain_engine/skills/` with `SKILL.md` and optional `tools.py`, and the agent will load both:
+Drop a folder under `engine/repobrain_engine/skills/` with `SKILL.md` and optional `tools.py`, and the agent will load both:
 - Skill docs from `SKILL.md` into prompt context
 - Public functions from `tools.py` as callable tools
 
 ### Built-in Example: `agent-repo-init`
 
 This repository includes:
-- `repobrain_engine/skills/agent-repo-init/`: in-agent skill integration (`init_agent_repo`)
+- `engine/repobrain_engine/skills/agent-repo-init/`: in-agent skill integration (`init_agent_repo`)
 - `skills/agent-repo-init/`: portable skill package with script runner
 
 `agent-repo-init` supports:
@@ -212,7 +212,7 @@ This directory contains all context automatically injected into the agent.
 
 ### Step 2: Add Tools (What the agent can do)
 ```python
-# repobrain_engine/tools/db_query.py
+# engine/repobrain_engine/tools/db_query.py
 def query_users(email_pattern: str) -> list:
     """Query users by email pattern."""
     # Implementation
@@ -251,18 +251,18 @@ The agent:
 
 ## 🔄 Hot Reload
 
-Tools are discovered at agent startup, so after changing `repobrain_engine/tools/` you should restart the agent.
+Tools are discovered at agent startup, so after changing `engine/repobrain_engine/tools/` you should restart the agent.
 Context files are loaded from `.context/*.md` on agent run.
 
 ## 🐛 Troubleshooting
 
 ### Tools not appearing
 ```bash
-# 1. Check file is in repobrain_engine/tools/
-ls -la repobrain_engine/tools/
+# 1. Check file is in engine/repobrain_engine/tools/
+ls -la engine/repobrain_engine/tools/
 
 # 2. Verify it's valid Python
-python -m py_compile repobrain_engine/tools/my_tool.py
+python -m py_compile engine/repobrain_engine/tools/my_tool.py
 
 # 3. Check for syntax errors
 python -c "import repobrain_engine.tools.my_tool"
@@ -306,7 +306,7 @@ rb-refresh --workspace .
 echo "Users must be at least 18 years old" > .context/age_requirement.md
 
 # Add tool to validate age
-cat > repobrain_engine/tools/age_validator.py << 'EOF'
+cat > engine/repobrain_engine/tools/age_validator.py << 'EOF'
 def validate_age(birth_date: str) -> bool:
     """Check if person is at least 18 years old."""
     # Implementation
@@ -329,7 +329,7 @@ Creates a new user
 EOF
 
 # Tool to create users
-cat > repobrain_engine/tools/user_service.py << 'EOF'
+cat > engine/repobrain_engine/tools/user_service.py << 'EOF'
 def create_user(email: str, name: str, age: int = None) -> dict:
     """Create a new user in the system."""
     # Validates per context requirements automatically

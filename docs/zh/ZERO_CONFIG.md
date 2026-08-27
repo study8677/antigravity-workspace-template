@@ -6,16 +6,16 @@
 
 ## 🛠️ 自动发现工具
 
-把任意 Python 文件放进 `repobrain_engine/tools/`，Agent 会立刻识别其顶层函数——无需 import、无需登记。
+把任意 Python 文件放进 `engine/repobrain_engine/tools/`，Agent 会立刻识别其顶层函数——无需 import、无需登记。
 
 ### 工作方式
-1) 🔍 扫描 `repobrain_engine/tools/` 下所有 `.py`  
+1) 🔍 扫描 `engine/repobrain_engine/tools/` 下所有 `.py`  
 2) 📋 索引顶层函数并读取 docstring  
 3) ✅ 注册公开函数为可调用工具  
 
 ### 示例
 ```python
-# repobrain_engine/tools/sentiment_analyzer.py
+# engine/repobrain_engine/tools/sentiment_analyzer.py
 def analyze_sentiment(text: str) -> dict:
     """情感分析：返回分数与标签。"""
     if len(text) > 10:
@@ -71,7 +71,7 @@ def analyze_sentiment(text: str) -> dict:
 
 **场景**：构建数据分析工具  
 - 上下文：`.context/database_schema.md` 记录表结构  
-- 工具：`repobrain_engine/tools/db_query.py` 提供查询函数  
+- 工具：`engine/repobrain_engine/tools/db_query.py` 提供查询函数  
 - 对话：直接让 Agent“查找最近一月创建的用户”，它既“知道”结构，也“能”查询。
 
 ## 🎓 最佳实践
@@ -83,8 +83,8 @@ def analyze_sentiment(text: str) -> dict:
 
 **工具没加载？**
 ```bash
-ls -la repobrain_engine/tools/
-python -m py_compile repobrain_engine/tools/my_tool.py
+ls -la engine/repobrain_engine/tools/
+python -m py_compile engine/repobrain_engine/tools/my_tool.py
 rb-refresh --workspace .  # 重新刷新知识库
 ```
 
