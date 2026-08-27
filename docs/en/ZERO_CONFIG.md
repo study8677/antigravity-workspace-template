@@ -12,7 +12,7 @@ Drop any Python file into `engine/repobrain_engine/tools/` and the agent will us
 
 1. **Define Your Tool**:
 ```python
-# engine/engine/repobrain_engine/tools/sentiment_analyzer.py
+# engine/repobrain_engine/tools/sentiment_analyzer.py
 def analyze_sentiment(text: str) -> dict:
     """Analyzes the sentiment of given text.
     
@@ -43,7 +43,7 @@ The agent will automatically discover and use `analyze_sentiment()`.
 ### Tool Discovery Mechanics
 
 The discovery process:
-1. 🔍 Scans `engine/engine/repobrain_engine/tools/` for all `.py` files
+1. 🔍 Scans `engine/repobrain_engine/tools/` for all `.py` files
 2. 📋 Indexes all top-level functions
 3. 📚 Extracts docstrings for help text
 4. 🔗 Registers public module-level functions with the agent

@@ -6,7 +6,7 @@
 
 ## 🛠️ Descubrimiento Automático de Herramientas
 
-Coloca cualquier archivo Python en `engine/engine/repobrain_engine/tools/` y el agente lo usará inmediatamente—sin imports, sin registro, sin boilerplate.
+Coloca cualquier archivo Python en `engine/repobrain_engine/tools/` y el agente lo usará inmediatamente—sin imports, sin registro, sin boilerplate.
 
 ### Cómo Funciona
 

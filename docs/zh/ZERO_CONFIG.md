@@ -6,7 +6,7 @@
 
 ## 🛠️ 自动发现工具
 
-把任意 Python 文件放进 `engine/engine/repobrain_engine/tools/`，Agent 会立刻识别其顶层函数——无需 import、无需登记。
+把任意 Python 文件放进 `engine/repobrain_engine/tools/`，Agent 会立刻识别其顶层函数——无需 import、无需登记。
 
 ### 工作方式
 1) 🔍 扫描 `engine/repobrain_engine/tools/` 下所有 `.py`  
