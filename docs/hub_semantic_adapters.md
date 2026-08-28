@@ -151,6 +151,13 @@ To add TypeScript, Rust, or Java:
 
 ## Known limitations
 
+- Knowledge graph size is unbounded by default. Set
+  `RB_KNOWLEDGE_GRAPH_FILE_LIMIT` to cap file nodes or
+  `RB_SEMANTIC_FILE_LIMIT` to cap semantically analyzed source files when a
+  constrained run is needed. Unset, `0`, or negative values mean unlimited.
+- Project scanning is also unbounded by default: `RB_SCAN_MAX_FILES` is unset
+  and `RB_SCAN_TIMEOUT_SECONDS` defaults to `0` (no timeout). Set them only for
+  intentionally constrained scans.
 - Adapters are intentionally lightweight and top-level only.
 - No full type resolution or cross-package symbol resolution is attempted.
 - Generic fallback summaries are coarse by design.

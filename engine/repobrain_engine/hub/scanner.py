@@ -59,8 +59,8 @@ _TEXT_EXTS = set(LANG_MAP) | DOCUMENTATION_EXTS | DATA_EXTS | {".env", ".log"}
 _CONFIG_LINE_LIMIT = 200
 _CONFIG_TOTAL_LIMIT = 30_000
 _ENTRY_POINT_LINE_LIMIT = 50
-_DEFAULT_SCAN_TIMEOUT_SECONDS = 30.0
-_DEFAULT_SCAN_MAX_FILES = 5000
+_DEFAULT_SCAN_TIMEOUT_SECONDS = 0.0
+_DEFAULT_SCAN_MAX_FILES: int | None = None
 _DEFAULT_SCAN_SAMPLE_FILES = 50
 
 
@@ -108,6 +108,20 @@ def _is_venv_dir(path: Path) -> bool:
         True if the directory looks like a Python virtual environment.
     """
     return (path / "pyvenv.cfg").is_file()
+
+
+def _env_optional_positive_int(name: str, default: int | None) -> int | None:
+    """Read a positive integer limit; unset, zero, or negative means unlimited."""
+    raw = os.environ.get(name)
+    if raw is None or not raw.strip():
+        return default
+    try:
+        value = int(raw)
+    except ValueError:
+        return default
+    if value <= 0:
+        return None
+    return value
 
 
 def _find_venv_dirs(root: Path) -> set[str]:
@@ -491,10 +505,9 @@ def full_scan(root: Path) -> ScanReport:
         _DEFAULT_SCAN_TIMEOUT_SECONDS,
         minimum=0.0,
     )
-    max_files = env_int(
+    max_files = _env_optional_positive_int(
         "RB_SCAN_MAX_FILES",
         _DEFAULT_SCAN_MAX_FILES,
-        minimum=1,
     )
     sample_limit = env_int(
         "RB_SCAN_SAMPLE_FILES",
@@ -535,7 +548,7 @@ def full_scan(root: Path) -> ScanReport:
             except ValueError:
                 continue
 
-            if report.walked_file_count >= max_files:
+            if max_files is not None and report.walked_file_count >= max_files:
                 report.timed_out = True
                 report.scan_stopped_reason = "max_files_reached"
                 hit_limit = True

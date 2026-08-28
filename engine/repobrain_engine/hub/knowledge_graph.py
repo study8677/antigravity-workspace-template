@@ -11,6 +11,7 @@ import, symbol, test, and entrypoint relationships through one path.
 from __future__ import annotations
 
 import json
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -22,8 +23,22 @@ if TYPE_CHECKING:
     from repobrain_engine.hub.language_adapters import FileSemantics, SymbolDef
     from repobrain_engine.hub.scanner import ScanReport
 
-# Maximum number of source files to parse for semantic edges.
-_MAX_SEMANTIC_FILES = 300
+_DEFAULT_GRAPH_FILE_LIMIT: int | None = None
+_DEFAULT_SEMANTIC_FILE_LIMIT: int | None = None
+
+
+def _env_file_limit(name: str, default: int | None) -> int | None:
+    """Return a configured file limit; unset, zero, or negative means unlimited."""
+    raw = os.environ.get(name)
+    if raw is None or not raw.strip():
+        return default
+    try:
+        value = int(raw)
+    except ValueError:
+        return default
+    if value <= 0:
+        return None
+    return value
 
 
 def build_knowledge_graph(root: Path, report: "ScanReport") -> dict[str, object]:
@@ -61,9 +76,16 @@ def build_knowledge_graph(root: Path, report: "ScanReport") -> dict[str, object]
         nodes.append({"id": dir_id, "type": "directory", "label": directory})
         edges.append({"from": workspace_id, "to": dir_id, "type": "contains"})
 
-    # File nodes (capped at 500)
+    file_node_limit = _env_file_limit(
+        "RB_KNOWLEDGE_GRAPH_FILE_LIMIT",
+        _DEFAULT_GRAPH_FILE_LIMIT,
+    )
+
     file_ids: set[str] = set()
-    for rel, meta in list(report.file_metadata.items())[:500]:
+    file_items = list(report.file_metadata.items())
+    if file_node_limit is not None:
+        file_items = file_items[:file_node_limit]
+    for rel, meta in file_items:
         file_id = f"file:{rel}"
         file_ids.add(file_id)
         nodes.append(
@@ -142,10 +164,14 @@ def _extract_semantic_edges(
         if f"file:{rel_path}" in existing_file_ids
         and Path(rel_path).suffix.lower() in SOURCE_CODE_EXTS
     ]
+    semantic_file_limit = _env_file_limit(
+        "RB_SEMANTIC_FILE_LIMIT",
+        _DEFAULT_SEMANTIC_FILE_LIMIT,
+    )
     semantic_index = build_semantic_index(
         root,
         candidate_rel_paths=candidate_rel_paths,
-        max_files=_MAX_SEMANTIC_FILES,
+        max_files=semantic_file_limit,
         skip_dirs={"data", "logs"},
     )
     return _semantic_index_to_graph(semantic_index)

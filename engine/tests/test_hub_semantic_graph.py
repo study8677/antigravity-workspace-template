@@ -278,6 +278,55 @@ def test_typescript_knowledge_graph_contains_adapter_summary_and_import_edges(
     } in edges
 
 
+def test_knowledge_graph_defaults_to_full_file_coverage(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    """Default graph construction should not truncate scanned source files."""
+    source_count = 505
+    pkg_dir = tmp_path / "pkg"
+    pkg_dir.mkdir()
+    for index in range(source_count):
+        _write_text(
+            pkg_dir / f"mod_{index:03d}.py",
+            f"def func_{index:03d}() -> int:\n    return {index}\n",
+        )
+
+    monkeypatch.delenv("RB_KNOWLEDGE_GRAPH_FILE_LIMIT", raising=False)
+    monkeypatch.delenv("RB_SEMANTIC_FILE_LIMIT", raising=False)
+
+    graph = build_knowledge_graph(tmp_path, full_scan(tmp_path))
+    node_ids = {node["id"] for node in graph["nodes"] if isinstance(node, dict)}
+
+    assert graph["summary"]["semantic_files"] == source_count
+    assert "file:pkg/mod_504.py" in node_ids
+    assert "symbol:pkg/mod_504.py:func_504" in node_ids
+
+
+def test_knowledge_graph_file_limits_remain_configurable(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    """Operators can still opt into bounded graph construction."""
+    for index in range(5):
+        _write_text(
+            tmp_path / f"mod_{index}.py",
+            f"def func_{index}() -> int:\n    return {index}\n",
+        )
+
+    monkeypatch.setenv("RB_KNOWLEDGE_GRAPH_FILE_LIMIT", "3")
+    monkeypatch.setenv("RB_SEMANTIC_FILE_LIMIT", "2")
+
+    graph = build_knowledge_graph(tmp_path, full_scan(tmp_path))
+    node_ids = {node["id"] for node in graph["nodes"] if isinstance(node, dict)}
+    file_node_ids = {node_id for node_id in node_ids if node_id.startswith("file:")}
+    symbol_node_ids = {node_id for node_id in node_ids if node_id.startswith("symbol:")}
+
+    assert graph["summary"]["semantic_files"] == 2
+    assert len(file_node_ids) == 3
+    assert len(symbol_node_ids) == 2
+
+
 def test_go_module_grouping_uses_semantic_package_and_import_signals(
     tmp_path: Path,
 ) -> None:

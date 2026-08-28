@@ -297,8 +297,8 @@ async def _refresh_pipeline_into_generation(
         head_sha=current_sha,
     )
 
-    scan_timeout = os.environ.get("RB_SCAN_TIMEOUT_SECONDS", "(default)")
-    scan_max_files = os.environ.get("RB_SCAN_MAX_FILES", "(default)")
+    scan_timeout = os.environ.get("RB_SCAN_TIMEOUT_SECONDS", "0")
+    scan_max_files = os.environ.get("RB_SCAN_MAX_FILES", "unlimited")
     scan_sample_files = os.environ.get("RB_SCAN_SAMPLE_FILES", "(default)")
     scan_verbose = os.environ.get("RB_SCAN_VERBOSE", "1")
     print(

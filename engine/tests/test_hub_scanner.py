@@ -32,6 +32,35 @@ def test_full_scan_detects_languages(tmp_path: Path) -> None:
     assert report.file_count >= 3
 
 
+def test_full_scan_defaults_to_no_file_limit(tmp_path: Path, monkeypatch) -> None:
+    """Default scanning should not stop at the legacy 5000-file cap."""
+    for index in range(5001):
+        (tmp_path / f"file_{index:04d}.py").write_text("x = 1\n", encoding="utf-8")
+
+    monkeypatch.delenv("RB_SCAN_MAX_FILES", raising=False)
+    monkeypatch.delenv("RB_SCAN_TIMEOUT_SECONDS", raising=False)
+
+    report = full_scan(tmp_path)
+
+    assert report.file_count == 5001
+    assert report.timed_out is False
+    assert report.scan_stopped_reason == "completed"
+
+
+def test_full_scan_file_limit_remains_configurable(tmp_path: Path, monkeypatch) -> None:
+    """Operators can still opt into bounded scans when needed."""
+    for index in range(5):
+        (tmp_path / f"file_{index}.py").write_text("x = 1\n", encoding="utf-8")
+
+    monkeypatch.setenv("RB_SCAN_MAX_FILES", "2")
+
+    report = full_scan(tmp_path)
+
+    assert report.file_count == 2
+    assert report.timed_out is True
+    assert report.scan_stopped_reason == "max_files_reached"
+
+
 def test_full_scan_detects_frameworks(tmp_path: Path) -> None:
     (tmp_path / "pyproject.toml").write_text("[project]\nname='test'", encoding="utf-8")
     (tmp_path / "Dockerfile").write_text("FROM python:3.12", encoding="utf-8")
