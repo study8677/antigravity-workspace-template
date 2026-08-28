@@ -1,0 +1,4 @@
+{
+  "name": "RepoBrain",
+  "install": "pip install -e ./cli -e './engine[dev]'"
+}
